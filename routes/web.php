@@ -25,8 +25,8 @@ use App\Models\Pembayaran;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
-});
+    return view('landing', ['angka' => \App\Support\DenyutSistem::ambil()]);
+})->name('landing');
 
 Route::view('/display/antrian', 'display.antrian')->name('display.antrian');
 

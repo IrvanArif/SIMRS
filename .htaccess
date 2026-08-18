@@ -1,0 +1,23 @@
+# Membuat http://localhost/SIMRS/ bisa dibuka langsung di bawah Apache.
+# Di server sungguhan, arahkan DocumentRoot ke public/ dan hapus berkas ini
+# beserta index.php di akar.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Jaring pengaman: tolak berkas rahasia dan folder internal, apa pun
+    # konfigurasi Apache di mesin lain.
+    RewriteRule ^(\.env|\.env\..*|composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml)$ - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|docs|resources|routes|storage|tests|vendor|node_modules)(/|$) - [F,L]
+
+    # Aset statis memang tinggal di public/, jadi diteruskan ke sana.
+    RewriteRule ^(build|favicon\.ico|robots\.txt)(.*)$ public/$1$2 [L]
+
+    # Sisanya ditangani front controller di akar.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
