@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatusResep;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,15 @@ class Resep extends Model
     protected $table = 'resep';
 
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => StatusResep::class,
+            'disiapkan_pada' => 'datetime',
+            'diserahkan_pada' => 'datetime',
+        ];
+    }
 
     public function kunjungan(): BelongsTo
     {
