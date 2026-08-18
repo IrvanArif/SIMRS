@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\BatchObat;
 use App\Models\Diagnosa;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
@@ -36,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     private function modelTerauditkan(): array
     {
-        return [Pasien::class, Kunjungan::class, Pemeriksaan::class, Diagnosa::class, Tagihan::class];
+        return [
+            Pasien::class, Kunjungan::class, Pemeriksaan::class,
+            Diagnosa::class, Tagihan::class, BatchObat::class,
+        ];
     }
 }
