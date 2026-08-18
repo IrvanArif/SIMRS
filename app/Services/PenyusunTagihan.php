@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Enums\StatusTagihan;
 use App\Models\Kunjungan;
+use App\Models\Resep;
 use App\Models\Tagihan;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class PenyusunTagihan
 {
@@ -50,5 +52,62 @@ class PenyusunTagihan
 
             return $tagihan;
         });
+    }
+
+    /**
+     * Menambahkan baris obat ke tagihan kunjungan yang sudah ada (aturan 28).
+     * Tagihan tidak disusun ulang — hanya ditambahi, dan hanya selama belum lunas.
+     */
+    public function tambahObat(Resep $resep): Tagihan
+    {
+        $tagihan = $resep->kunjungan->tagihan;
+
+        if ($tagihan === null) {
+            throw new RuntimeException(
+                'Kunjungan ini belum punya tagihan. Dokter harus menyelesaikan kunjungan lebih dulu.'
+            );
+        }
+
+        if ($tagihan->status === StatusTagihan::Lunas) {
+            throw new RuntimeException(
+                "Tagihan {$tagihan->no_tagihan} sudah lunas dan tidak bisa ditambahi biaya obat."
+            );
+        }
+
+        return DB::transaction(function () use ($resep, $tagihan) {
+            foreach ($resep->detail as $baris) {
+                if ((int) $baris->jumlah_diserahkan === 0) {
+                    continue;
+                }
+
+                $tagihan->detail()->create([
+                    'resep_detail_id' => $baris->id,
+                    'deskripsi' => $baris->obat->nama,
+                    'jumlah' => $baris->jumlah_diserahkan,
+                    'tarif_satuan' => $baris->harga_satuan,
+                    'subtotal' => $baris->subtotal(),
+                ]);
+            }
+
+            return $this->hitungUlang($tagihan);
+        });
+    }
+
+    /**
+     * Menyetel ulang total dari seluruh rinciannya. Dipakai setiap kali baris
+     * ditambahkan atau dibatalkan, supaya angkanya tidak pernah dihitung di dua tempat.
+     */
+    public function hitungUlang(Tagihan $tagihan): Tagihan
+    {
+        $total = (int) $tagihan->detail()->sum('subtotal');
+        $ditanggung = $tagihan->penjamin->ditanggung();
+
+        $tagihan->update([
+            'total' => $total,
+            'ditanggung_penjamin' => $ditanggung ? $total : 0,
+            'ditagihkan_ke_pasien' => $ditanggung ? 0 : $total,
+        ]);
+
+        return $tagihan->refresh();
     }
 }

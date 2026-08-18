@@ -7,7 +7,9 @@ use App\Enums\MetodePembayaran;
 use App\Enums\Peran;
 use App\Enums\StatusKunjungan;
 use App\Enums\StatusTagihan;
+use App\Models\BatchObat;
 use App\Models\Dokter;
+use App\Models\HargaObat;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Obat;
@@ -20,6 +22,7 @@ use App\Services\PemeriksaanKlinis;
 use App\Services\PendaftaranKunjungan;
 use App\Services\PendaftaranPasien;
 use App\Services\PenulisanResep;
+use App\Services\PenyiapanResep;
 use App\Services\ProsesPembayaran;
 use App\Services\TindakanPelayanan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,13 +110,36 @@ class AlurRawatJalanTest extends TestCase
 
         app(TindakanPelayanan::class)->tambah($kunjungan, $this->konsultasi->id, 1, $dokterUser);
 
-        app(PenulisanResep::class)->tulis($kunjungan, [[
-            'obat_id' => Obat::factory()->create()->id,
+        $obat = Obat::factory()->create(['nama' => 'Amoksisilin 500 mg']);
+
+        HargaObat::factory()->create([
+            'obat_id' => $obat->id,
+            'penjamin_id' => $penjamin->id,
+            'harga' => 2000,
+            'berlaku_mulai' => '2026-01-01',
+        ]);
+
+        BatchObat::factory()->create([
+            'obat_id' => $obat->id,
+            'tanggal_kedaluwarsa' => '2029-01-31',
+            'jumlah_awal' => 100,
+            'jumlah_tersisa' => 100,
+            'harga_beli' => 1200,
+        ]);
+
+        $resep = app(PenulisanResep::class)->tulis($kunjungan, [[
+            'obat_id' => $obat->id,
             'jumlah' => 10,
             'aturan_pakai' => '3x1 sesudah makan',
         ]], $dokterUser);
 
         $klinis->selesaikan($kunjungan, $dokterUser);
+
+        // Sejak Fase 2, kasir terkunci sampai apotek menyiapkan resepnya
+        // (aturan 29). Alur rawat jalan kini memang melewati apotek.
+        $apoteker = User::factory()->create();
+        $apoteker->assignRole(Peran::Apoteker->value);
+        app(PenyiapanResep::class)->siapkan($resep, $apoteker);
 
         return $kunjungan->refresh();
     }
@@ -130,8 +156,9 @@ class AlurRawatJalanTest extends TestCase
             ->bayar($kunjungan->tagihan, MetodePembayaran::Tunai, 100000, $kasir);
 
         $this->assertSame(StatusKunjungan::Selesai, $kunjungan->status);
-        $this->assertSame(50000, (int) $kunjungan->tagihan->total);
-        $this->assertSame(50000, (int) $pembayaran->kembalian);
+        // 50.000 konsultasi + 10 x 2.000 obat
+        $this->assertSame(70000, (int) $kunjungan->tagihan->total);
+        $this->assertSame(30000, (int) $pembayaran->kembalian);
         $this->assertSame(StatusTagihan::Lunas, $kunjungan->tagihan->refresh()->status);
         $this->assertNotNull($kunjungan->resep);
         $this->assertSame(1, $kunjungan->diagnosa()->count());
@@ -144,8 +171,8 @@ class AlurRawatJalanTest extends TestCase
 
         $kunjungan = $this->jalankanAlur($bpjs, '3202011203900002', '0001234567890');
 
-        $this->assertSame(35000, (int) $kunjungan->tagihan->total);
-        $this->assertSame(35000, (int) $kunjungan->tagihan->ditanggung_penjamin);
+        $this->assertSame(55000, (int) $kunjungan->tagihan->total);
+        $this->assertSame(55000, (int) $kunjungan->tagihan->ditanggung_penjamin);
         $this->assertSame(0, (int) $kunjungan->tagihan->ditagihkan_ke_pasien);
         $this->assertSame(StatusTagihan::DitanggungPenjamin, $kunjungan->tagihan->status);
     }

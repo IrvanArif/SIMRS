@@ -17,7 +17,10 @@ use RuntimeException;
 
 class PenyiapanResep
 {
-    public function __construct(private readonly PencariHargaObat $pencariHarga) {}
+    public function __construct(
+        private readonly PencariHargaObat $pencariHarga,
+        private readonly PenyusunTagihan $penyusunTagihan,
+    ) {}
 
     public function siapkan(Resep $resep, User $apoteker): Resep
     {
@@ -78,6 +81,10 @@ class PenyiapanResep
                 'disiapkan_pada' => now(),
                 'disiapkan_oleh' => $apoteker->id,
             ]);
+
+            // Pengecekan "tagihan sudah lunas" ada di dalam transaksi yang sama,
+            // jadi bila ditolak, seluruh pemotongan stok ikut dibatalkan.
+            $this->penyusunTagihan->tambahObat($terkunci->refresh()->load('detail.obat'));
 
             return $terkunci->refresh()->load('detail.pengambilan');
         });
