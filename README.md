@@ -51,6 +51,23 @@ php artisan migrate:fresh --seed
 php artisan serve
 ```
 
+## Menyajikan lewat Apache
+
+Untuk pengembangan lokal, akar proyek memuat `index.php` dan `.htaccess` agar
+`http://localhost/SIMRS/` bisa langsung dibuka. Keduanya **hanya berjalan saat
+`APP_ENV=local`** dan menolak melayani apa pun di luar itu.
+
+Di server sungguhan, arahkan `DocumentRoot` langsung ke `public/` lalu hapus
+kedua berkas tersebut. Menyajikan akar proyek lewat web membuat `.env` dan
+folder internal hanya terlindungi oleh `.htaccess` — dan itu lenyap begitu
+`AllowOverride` dimatikan.
+
+Laravel juga harus bisa menulis ke `storage/` dan `bootstrap/cache`:
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+```
+
 ## Akun demo
 
 Seluruhnya berkata sandi `rahasia123`.

@@ -236,35 +236,33 @@
             </div>
         </section>
 
-        {{-- Akun demo --}}
+        {{-- Peran --}}
         <section class="pb-24">
             <div class="flex items-end justify-between border-b pb-4" style="border-color: var(--garis)">
-                <h2 class="text-2xl font-semibold tracking-tight">Akun Demo</h2>
-                <span class="label-alat">Sandi: rahasia123</span>
+                <h2 class="text-2xl font-semibold tracking-tight">Peran &amp; Kewenangan</h2>
+                <span class="label-alat">Tujuh peran, dijaga Policy</span>
             </div>
 
             <div class="mt-8 overflow-x-auto rounded-lg border" style="border-color: var(--garis); background: var(--panel)">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left" style="color: var(--teks-redup)">
-                            <th class="px-5 py-3 font-medium">Email</th>
                             <th class="px-5 py-3 font-medium">Peran</th>
                             <th class="px-5 py-3 font-medium">Kewenangan</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ([
-                            ['admisi@rs.test', 'Admisi', 'Daftar pasien, buat kunjungan, cetak karcis'],
-                            ['perawat@rs.test', 'Perawat', 'Input tanda vital'],
-                            ['dokter@rs.test', 'Dokter', 'SOAP, diagnosa, tindakan, resep'],
-                            ['apoteker@rs.test', 'Apoteker', 'Siapkan dan serahkan obat, kelola stok'],
-                            ['kasir@rs.test', 'Kasir', 'Pembayaran dan kuitansi'],
-                            ['rekammedis@rs.test', 'Rekam Medis', 'Telusur riwayat, koreksi data berjejak'],
-                            ['admin@rs.test', 'Admin', 'Master data, pengguna, audit log'],
-                        ] as [$email, $peran, $wewenang])
+                            ['Admisi', 'Daftar pasien, buat kunjungan, cetak karcis antrian'],
+                            ['Perawat', 'Input tanda vital dan keluhan awal'],
+                            ['Dokter', 'SOAP, diagnosa ICD-10, tindakan, resep, selesaikan kunjungan'],
+                            ['Apoteker', 'Siapkan dan serahkan obat, terima batch, kelola stok'],
+                            ['Kasir', 'Proses pembayaran dan cetak kuitansi'],
+                            ['Rekam Medis', 'Telusur riwayat, koreksi data berjejak, rekap harian'],
+                            ['Admin', 'Master data, kelola pengguna, penampil audit log'],
+                        ] as [$peran, $wewenang])
                             <tr class="border-t" style="border-color: var(--garis)">
-                                <td class="px-5 py-3 angka" style="color: var(--vital)">{{ $email }}</td>
-                                <td class="px-5 py-3">{{ $peran }}</td>
+                                <td class="px-5 py-3 font-medium">{{ $peran }}</td>
                                 <td class="px-5 py-3" style="color: var(--teks-redup)">{{ $wewenang }}</td>
                             </tr>
                         @endforeach
@@ -272,10 +270,23 @@
                 </table>
             </div>
 
+            @if (app()->environment('local'))
+                {{-- Kredensial contoh hanya muncul di lingkungan lokal. Halaman ini
+                     terbuka tanpa login, jadi menampilkannya di luar lokal sama saja
+                     menyerahkan akun setiap peran kepada siapa pun yang membukanya. --}}
+                <div class="mt-6 rounded-lg border p-5" style="border-color: rgba(255,176,32,.35); background: rgba(255,176,32,.06)">
+                    <p class="label-alat" style="color: var(--siaga)">Lingkungan lokal</p>
+                    <p class="mt-2 text-sm" style="color: var(--teks-redup)">
+                        Akun contoh tersedia dengan pola <span class="angka" style="color: var(--teks)">{peran}@rs.test</span>
+                        dan kata sandi seragam yang disetel <span class="angka" style="color: var(--teks)">PenggunaSeeder</span>.
+                        Blok ini tidak akan pernah tampil di luar lingkungan lokal.
+                    </p>
+                </div>
+            @endif
+
             <p class="mt-4 text-xs" style="color: var(--teks-redup)">
                 Seluruh data pada sistem ini adalah data contoh dan tidak menunjuk rumah sakit
-                maupun pasien mana pun. Kata sandi seragam di atas hanya berlaku untuk
-                lingkungan pengembangan.
+                maupun pasien mana pun.
             </p>
         </section>
 
