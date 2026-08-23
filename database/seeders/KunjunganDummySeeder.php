@@ -16,6 +16,8 @@ use App\Models\User;
 use App\Services\PemeriksaanKlinis;
 use App\Services\PendaftaranKunjungan;
 use App\Services\PenulisanResep;
+use App\Services\PenyerahanObat;
+use App\Services\PenyiapanResep;
 use App\Services\ProsesPembayaran;
 use App\Services\TindakanPelayanan;
 use Illuminate\Database\Seeder;
@@ -34,20 +36,30 @@ class KunjunganDummySeeder extends Seeder
         $konsultasi = Tindakan::where('kategori', 'konsultasi')->get();
         $tindakanMedis = Tindakan::where('kategori', 'tindakan_medis')->get();
         $icd = Icd10::inRandomOrder()->limit(30)->get();
-        $obat = Obat::inRandomOrder()->limit(20)->get();
+        // Obat bersaldo tipis sengaja dikecualikan: obat itu ada untuk menguji
+        // layar peringatan, bukan untuk diresepkan. Meresepkannya akan ditolak
+        // aturan 24 dan menggagalkan seeder.
+        $obat = Obat::orderBy('id')->get()
+            ->filter(fn (Obat $o) => $o->stokTersedia() >= 20)
+            ->values();
 
         $admisi = User::role(Peran::Admisi->value)->first();
         $perawat = User::role(Peran::Perawat->value)->first();
         $dokterUser = User::role(Peran::Dokter->value)->first();
         $kasir = User::role(Peran::Kasir->value)->first();
+        $apoteker = User::role(Peran::Apoteker->value)->first();
 
         $pendaftaran = app(PendaftaranKunjungan::class);
         $klinis = app(PemeriksaanKlinis::class);
         $pelayanan = app(TindakanPelayanan::class);
         $resep = app(PenulisanResep::class);
         $pembayaran = app(ProsesPembayaran::class);
+        $penyiapan = app(PenyiapanResep::class);
+        $penyerahan = app(PenyerahanObat::class);
 
         $selesai = 0;
+        $disiapkan = 0;
+        $diserahkan = 0;
         $dibayar = 0;
 
         foreach ($pasien as $indeks => $orang) {
@@ -90,7 +102,7 @@ class KunjunganDummySeeder extends Seeder
                 $pelayanan->tambah($kunjungan, $tindakanMedis->random()->id, 1, $dokterUser);
             }
 
-            $resep->tulis($kunjungan, [[
+            $resepPasien = $resep->tulis($kunjungan, [[
                 'obat_id' => $obat->random()->id,
                 'jumlah' => rand(5, 15),
                 'aturan_pakai' => '3x1 sesudah makan',
@@ -99,20 +111,49 @@ class KunjunganDummySeeder extends Seeder
             $klinis->selesaikan($kunjungan, $dokterUser);
             $selesai++;
 
-            // Hanya sebagian tagihan umum yang dilunasi, supaya layar kasir tetap
-            // punya antrean pekerjaan saat sistem didemokan.
+            // Sebagian resep sengaja dibiarkan menunggu apotek. Tagihannya ikut
+            // terkunci di kasir (aturan 29) — itulah keadaan yang justru perlu
+            // terlihat saat sistem didemokan.
+            if ($indeks < 40) {
+                continue;
+            }
+
+            $penyiapan->siapkan($resepPasien, $apoteker);
+            $disiapkan++;
+
             $tagihan = $kunjungan->refresh()->tagihan;
 
-            if (! $pakaiBpjs && $dibayar < 5) {
+            // Pasien berpenjamin langsung menerima obat; pasien umum menunggu
+            // kasir lebih dulu (aturan 30).
+            // Sebagian sengaja berhenti di status disiapkan — obat sudah siap tapi
+            // belum diambil pasien. Layar penyerahan perlu punya isi saat didemokan.
+            if ($pakaiBpjs) {
+                if ($diserahkan < 3) {
+                    $penyerahan->serahkan($resepPasien->refresh(), $apoteker);
+                    $diserahkan++;
+                }
+
+                continue;
+            }
+
+            if ($dibayar < 5) {
                 $pembayaran->bayar($tagihan, MetodePembayaran::Tunai, (int) $tagihan->ditagihkan_ke_pasien, $kasir);
                 $dibayar++;
+
+                if ($diserahkan < 6) {
+                    $penyerahan->serahkan($resepPasien->refresh(), $apoteker);
+                    $diserahkan++;
+                }
             }
         }
 
+        $menungguApotek = \App\Models\Resep::where('status', \App\Enums\StatusResep::Dibuat)->count();
         $belumLunas = \App\Models\Tagihan::where('status', \App\Enums\StatusTagihan::BelumBayar)->count();
 
         $this->command?->info(
-            "Kunjungan dummy: {$selesai} selesai, {$dibayar} sudah dibayar, {$belumLunas} menunggu di kasir."
+            "Kunjungan dummy: {$selesai} selesai, {$disiapkan} resep disiapkan, "
+            ."{$diserahkan} obat diserahkan, {$dibayar} dibayar, "
+            ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir."
         );
     }
 }

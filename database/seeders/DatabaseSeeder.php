@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             MasterSeeder::class,
             Icd10Seeder::class,
             PenggunaSeeder::class,
+            FarmasiSeeder::class,
             PasienDummySeeder::class,
             KunjunganDummySeeder::class,
         ]);
