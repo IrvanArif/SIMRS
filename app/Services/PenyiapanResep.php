@@ -11,8 +11,10 @@ use App\Models\MutasiStok;
 use App\Models\Resep;
 use App\Models\ResepDetail;
 use App\Models\User;
+use App\Support\KonteksAudit;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class PenyiapanResep
@@ -87,6 +89,68 @@ class PenyiapanResep
             $this->penyusunTagihan->tambahObat($terkunci->refresh()->load('detail.obat'));
 
             return $terkunci->refresh()->load('detail.pengambilan');
+        });
+    }
+
+    /**
+     * Mengembalikan seluruh jumlah ke batch asalnya dan mencabut baris obat dari
+     * tagihan (aturan 32). Resep kembali berstatus dibuat sehingga bisa disiapkan ulang.
+     */
+    public function batalkan(Resep $resep, User $apoteker, string $alasan): Resep
+    {
+        if (trim($alasan) === '') {
+            throw ValidationException::withMessages([
+                'alasan' => 'Alasan pembatalan penyiapan wajib diisi.',
+            ]);
+        }
+
+        if ($resep->status !== StatusResep::Disiapkan) {
+            throw new RuntimeException(
+                "Hanya resep berstatus disiapkan yang bisa dibatalkan. Resep ini berstatus {$resep->status->label()}."
+            );
+        }
+
+        return KonteksAudit::dengan(trim($alasan), function () use ($resep, $apoteker) {
+            return DB::transaction(function () use ($resep, $apoteker) {
+                foreach ($resep->detail as $baris) {
+                    foreach ($baris->pengambilan as $pengambilan) {
+                        $batch = BatchObat::whereKey($pengambilan->batch_obat_id)->lockForUpdate()->first();
+                        $sisa = (int) $batch->jumlah_tersisa + (int) $pengambilan->jumlah;
+
+                        $batch->update(['jumlah_tersisa' => $sisa]);
+
+                        MutasiStok::create([
+                            'batch_obat_id' => $batch->id,
+                            'obat_id' => $batch->obat_id,
+                            'jenis' => JenisMutasiStok::Pengembalian,
+                            'jumlah' => (int) $pengambilan->jumlah,
+                            'stok_sesudah' => $sisa,
+                            'resep_id' => $resep->id,
+                            'catatan' => 'Pembatalan penyiapan resep '.$resep->no_resep,
+                            'dilakukan_oleh' => $apoteker->id,
+                            'created_at' => now(),
+                        ]);
+                    }
+
+                    $baris->pengambilan()->delete();
+                    $baris->update(['jumlah_diserahkan' => 0, 'harga_satuan' => 0]);
+                }
+
+                $tagihan = $resep->kunjungan->tagihan;
+
+                if ($tagihan !== null) {
+                    $tagihan->detail()->whereNotNull('resep_detail_id')->delete();
+                    $this->penyusunTagihan->hitungUlang($tagihan);
+                }
+
+                $resep->update([
+                    'status' => StatusResep::Dibuat,
+                    'disiapkan_pada' => null,
+                    'disiapkan_oleh' => null,
+                ]);
+
+                return $resep->refresh();
+            });
         });
     }
 
