@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\JenisLayanan;
 use App\Enums\JenisMutasiStok;
 use App\Enums\StatusResep;
 use App\Exceptions\SeluruhBatchKedaluwarsa;
@@ -20,7 +21,7 @@ use RuntimeException;
 class PenyiapanResep
 {
     public function __construct(
-        private readonly PencariHargaObat $pencariHarga,
+        private readonly PencariTarif $pencariTarif,
         private readonly PenyusunTagihan $penyusunTagihan,
     ) {}
 
@@ -72,8 +73,8 @@ class PenyiapanResep
 
                 $baris->update([
                     'jumlah_diserahkan' => $baris->jumlah,
-                    'harga_satuan' => $this->pencariHarga->untuk(
-                        $baris->obat_id, $kunjungan->penjamin_id, $tanggal
+                    'harga_satuan' => $this->pencariTarif->untuk(
+                        JenisLayanan::Obat, $baris->obat_id, $kunjungan->penjamin_id, $tanggal
                     ),
                 ]);
             }

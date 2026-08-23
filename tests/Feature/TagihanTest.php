@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Enums\JenisDiagnosa;
 use App\Enums\StatusTagihan;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Penjamin;
-use App\Models\TarifTindakan;
+use App\Models\Tarif;
 use App\Models\Tindakan;
 use App\Models\User;
 use App\Services\PemeriksaanKlinis;
@@ -35,13 +36,15 @@ class TagihanTest extends TestCase
         $this->suntik = Tindakan::factory()->create(['nama' => 'Injeksi Intramuskular']);
 
         foreach ([[$this->konsultasi, 50000, 35000], [$this->suntik, 25000, 15000]] as [$tindakan, $tarifUmum, $tarifBpjs]) {
-            TarifTindakan::factory()->create([
-                'tindakan_id' => $tindakan->id, 'penjamin_id' => $this->umum->id,
-                'tarif' => $tarifUmum, 'berlaku_mulai' => '2026-01-01',
+            Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id, 'penjamin_id' => $this->umum->id,
+                'harga' => $tarifUmum, 'berlaku_mulai' => '2026-01-01',
             ]);
-            TarifTindakan::factory()->create([
-                'tindakan_id' => $tindakan->id, 'penjamin_id' => $this->bpjs->id,
-                'tarif' => $tarifBpjs, 'berlaku_mulai' => '2026-01-01',
+            Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id, 'penjamin_id' => $this->bpjs->id,
+                'harga' => $tarifBpjs, 'berlaku_mulai' => '2026-01-01',
             ]);
         }
     }

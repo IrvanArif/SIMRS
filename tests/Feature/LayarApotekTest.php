@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Enums\Peran;
 use App\Enums\StatusResep;
 use App\Livewire\Apotek\AntreanResep;
 use App\Livewire\Apotek\LayarPenyiapan;
 use App\Livewire\Apotek\PenerimaanBatch;
 use App\Models\BatchObat;
-use App\Models\HargaObat;
 use App\Models\Kunjungan;
 use App\Models\Obat;
 use App\Models\Penjamin;
+use App\Models\Tarif;
 use App\Models\Resep;
 use App\Models\Tagihan;
 use App\Models\User;
@@ -47,8 +48,9 @@ class LayarApotekTest extends TestCase
         $umum = Penjamin::factory()->create(['kode' => 'UMUM', 'jenis' => 'tunai']);
         $obat = Obat::factory()->create(['nama' => 'Paracetamol 500 mg']);
 
-        HargaObat::factory()->create([
-            'obat_id' => $obat->id, 'penjamin_id' => $umum->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Obat,
+            'layanan_id' => $obat->id, 'penjamin_id' => $umum->id,
             'harga' => 1500, 'berlaku_mulai' => '2026-01-01',
         ]);
 

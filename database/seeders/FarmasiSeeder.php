@@ -5,7 +5,8 @@ namespace Database\Seeders;
 use App\Enums\JenisMutasiStok;
 use App\Models\BatchObat;
 use App\Models\MutasiStok;
-use App\Models\HargaObat;
+use App\Enums\JenisLayanan;
+use App\Models\Tarif;
 use App\Models\Obat;
 use App\Models\Penjamin;
 use Illuminate\Database\Seeder;
@@ -39,14 +40,16 @@ class FarmasiSeeder extends Seeder
             [$min, $maks] = $rentang[$obat->bentuk_sediaan] ?? [1000, 10000];
             $hargaUmum = (int) (round(rand($min, $maks) / 100) * 100);
 
-            HargaObat::updateOrCreate([
-                'obat_id' => $obat->id,
+            Tarif::updateOrCreate([
+                'jenis_layanan' => JenisLayanan::Obat,
+                'layanan_id' => $obat->id,
                 'penjamin_id' => $penjamin['UMUM'],
                 'berlaku_mulai' => '2026-01-01',
             ], ['harga' => $hargaUmum]);
 
-            HargaObat::updateOrCreate([
-                'obat_id' => $obat->id,
+            Tarif::updateOrCreate([
+                'jenis_layanan' => JenisLayanan::Obat,
+                'layanan_id' => $obat->id,
                 'penjamin_id' => $penjamin['BPJS'],
                 'berlaku_mulai' => '2026-01-01',
             ], ['harga' => (int) (round($hargaUmum * 0.7 / 100) * 100)]);

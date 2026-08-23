@@ -7,7 +7,8 @@ use App\Models\JadwalDokter;
 use App\Models\Obat;
 use App\Models\Penjamin;
 use App\Models\Poli;
-use App\Models\TarifTindakan;
+use App\Enums\JenisLayanan;
+use App\Models\Tarif;
 use App\Models\Tindakan;
 use Illuminate\Database\Seeder;
 
@@ -147,11 +148,12 @@ class MasterSeeder extends Seeder
             $tarifBpjs = (int) (round($tarifUmum * 0.7 / 1000) * 1000);
 
             foreach (['UMUM' => $tarifUmum, 'BPJS' => $tarifBpjs] as $kodePenjamin => $tarif) {
-                TarifTindakan::updateOrCreate([
-                    'tindakan_id' => $tindakan->id,
+                Tarif::updateOrCreate([
+                    'jenis_layanan' => JenisLayanan::Tindakan,
+                    'layanan_id' => $tindakan->id,
                     'penjamin_id' => $penjamin[$kodePenjamin]->id,
                     'berlaku_mulai' => '2026-01-01',
-                ], ['tarif' => $tarif]);
+                ], ['harga' => $tarif]);
             }
         }
     }

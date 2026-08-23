@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Models\Dokter;
 use App\Models\Penjamin;
-use App\Models\TarifTindakan;
+use App\Models\Tarif;
 use App\Models\Tindakan;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,14 +38,23 @@ class MasterDataTest extends TestCase
         $umum = Penjamin::factory()->create(['kode' => 'UMUM', 'jenis' => 'tunai']);
         $bpjs = Penjamin::factory()->create(['kode' => 'BPJS', 'jenis' => 'penjamin']);
 
-        TarifTindakan::factory()->create([
-            'tindakan_id' => $tindakan->id, 'penjamin_id' => $umum->id, 'tarif' => 50000,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id, 'penjamin_id' => $umum->id, 'harga' => 50000,
         ]);
-        TarifTindakan::factory()->create([
-            'tindakan_id' => $tindakan->id, 'penjamin_id' => $bpjs->id, 'tarif' => 35000,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id, 'penjamin_id' => $bpjs->id, 'harga' => 35000,
         ]);
 
-        $this->assertSame(2, $tindakan->tarif()->count());
+        // Tarif tidak lagi diakses lewat relasi pada model layanan: satu tabel
+        // melayani tiga jenis layanan, jadi kuncinya sepasang jenis dan id.
+        $this->assertSame(
+            2,
+            Tarif::where('jenis_layanan', JenisLayanan::Tindakan)
+                ->where('layanan_id', $tindakan->id)
+                ->count()
+        );
     }
 
     public function test_tarif_ganda_untuk_penjamin_dan_tanggal_berlaku_sama_ditolak_database(): void
@@ -52,16 +62,18 @@ class MasterDataTest extends TestCase
         $tindakan = Tindakan::factory()->create();
         $penjamin = Penjamin::factory()->create();
 
-        TarifTindakan::factory()->create([
-            'tindakan_id' => $tindakan->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id,
             'penjamin_id' => $penjamin->id,
             'berlaku_mulai' => '2026-01-01',
         ]);
 
         $this->expectException(QueryException::class);
 
-        TarifTindakan::factory()->create([
-            'tindakan_id' => $tindakan->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $tindakan->id,
             'penjamin_id' => $penjamin->id,
             'berlaku_mulai' => '2026-01-01',
         ]);

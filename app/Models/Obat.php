@@ -20,11 +20,6 @@ class Obat extends Model
         return ['aktif' => 'boolean'];
     }
 
-    public function harga(): HasMany
-    {
-        return $this->hasMany(HargaObat::class);
-    }
-
     public function batch(): HasMany
     {
         return $this->hasMany(BatchObat::class);

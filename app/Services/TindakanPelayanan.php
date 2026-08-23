@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\JenisLayanan;
 use App\Models\Kunjungan;
 use App\Models\TindakanKunjungan;
 use App\Models\User;
@@ -32,7 +33,9 @@ class TindakanPelayanan
         return $kunjungan->tindakan()->create([
             'tindakan_id' => $tindakanId,
             'jumlah' => $jumlah,
-            'tarif_satuan' => $this->pencariTarif->untuk($tindakanId, $kunjungan->penjamin_id, $kunjungan->tanggal),
+            'tarif_satuan' => $this->pencariTarif->untuk(
+                JenisLayanan::Tindakan, $tindakanId, $kunjungan->penjamin_id, $kunjungan->tanggal
+            ),
             'dilakukan_oleh' => $petugas->id,
         ]);
     }

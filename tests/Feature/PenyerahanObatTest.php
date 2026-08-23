@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Enums\JenisMutasiStok;
 use App\Enums\MetodePembayaran;
 use App\Enums\StatusResep;
 use App\Enums\StatusTagihan;
 use App\Models\BatchObat;
-use App\Models\HargaObat;
 use App\Models\Kunjungan;
 use App\Models\MutasiStok;
 use App\Models\Obat;
 use App\Models\Penjamin;
+use App\Models\Tarif;
 use App\Models\Resep;
 use App\Models\Tagihan;
 use App\Models\User;
@@ -45,8 +46,9 @@ class PenyerahanObatTest extends TestCase
             'jenis' => $jenisPenjamin,
         ]);
 
-        HargaObat::factory()->create([
-            'obat_id' => $this->obat->id, 'penjamin_id' => $penjamin->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Obat,
+            'layanan_id' => $this->obat->id, 'penjamin_id' => $penjamin->id,
             'harga' => 2000, 'berlaku_mulai' => '2026-01-01',
         ]);
 

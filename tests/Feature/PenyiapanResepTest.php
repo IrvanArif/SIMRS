@@ -2,16 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Enums\JenisMutasiStok;
 use App\Enums\StatusResep;
 use App\Exceptions\SeluruhBatchKedaluwarsa;
 use App\Exceptions\StokTidakCukup;
 use App\Models\BatchObat;
-use App\Models\HargaObat;
 use App\Models\Kunjungan;
 use App\Models\MutasiStok;
 use App\Models\Obat;
 use App\Models\Penjamin;
+use App\Models\Tarif;
 use App\Models\Resep;
 use App\Models\Tagihan;
 use App\Models\User;
@@ -43,8 +44,9 @@ class PenyiapanResepTest extends TestCase
             'penjamin_id' => $this->umum->id,
         ]);
 
-        HargaObat::factory()->create([
-            'obat_id' => $this->obat->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Obat,
+            'layanan_id' => $this->obat->id,
             'penjamin_id' => $this->umum->id,
             'harga' => 1500,
             'berlaku_mulai' => '2026-01-01',
@@ -159,7 +161,7 @@ class PenyiapanResepTest extends TestCase
         $this->batch('SATU', '2029-01-31', 100);
         $resep = app(PenyiapanResep::class)->siapkan($this->resep(10), $this->apoteker());
 
-        HargaObat::where('obat_id', $this->obat->id)->update(['harga' => 9999]);
+        Tarif::query()->update(['harga' => 9999]);
 
         $this->assertSame(1500, (int) $resep->detail->first()->refresh()->harga_satuan);
     }

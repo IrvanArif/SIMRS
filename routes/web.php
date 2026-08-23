@@ -16,7 +16,6 @@ use App\Livewire\Pendaftaran\FormKunjungan;
 use App\Livewire\Pendaftaran\FormPasien;
 use App\Livewire\Pendaftaran\PapanAntrian;
 use App\Livewire\Master\DaftarDokter;
-use App\Livewire\Master\DaftarHargaObat;
 use App\Livewire\Master\DaftarPoli;
 use App\Livewire\Master\DaftarTarif;
 use App\Livewire\Master\DaftarTindakan;
@@ -95,7 +94,6 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/master/poli', DaftarPoli::class)->name('master.poli');
-        Route::get('/master/harga-obat', DaftarHargaObat::class)->name('master.harga-obat');
         Route::get('/master/dokter', DaftarDokter::class)->name('master.dokter');
         Route::get('/master/tindakan', DaftarTindakan::class)->name('master.tindakan');
         Route::get('/master/tarif', DaftarTarif::class)->name('master.tarif');

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\JenisLayanan;
 use App\Enums\JenisDiagnosa;
 use App\Enums\MetodePembayaran;
 use App\Enums\Peran;
@@ -9,13 +10,12 @@ use App\Enums\StatusKunjungan;
 use App\Enums\StatusTagihan;
 use App\Models\BatchObat;
 use App\Models\Dokter;
-use App\Models\HargaObat;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Obat;
 use App\Models\Penjamin;
 use App\Models\Poli;
-use App\Models\TarifTindakan;
+use App\Models\Tarif;
 use App\Models\Tindakan;
 use App\Models\User;
 use App\Services\PemeriksaanKlinis;
@@ -54,10 +54,11 @@ class AlurRawatJalanTest extends TestCase
     {
         $penjamin = Penjamin::factory()->create(['kode' => $kode, 'jenis' => $jenis]);
 
-        TarifTindakan::factory()->create([
-            'tindakan_id' => $this->konsultasi->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Tindakan,
+            'layanan_id' => $this->konsultasi->id,
             'penjamin_id' => $penjamin->id,
-            'tarif' => $tarif,
+            'harga' => $tarif,
             'berlaku_mulai' => '2026-01-01',
         ]);
 
@@ -112,8 +113,9 @@ class AlurRawatJalanTest extends TestCase
 
         $obat = Obat::factory()->create(['nama' => 'Amoksisilin 500 mg']);
 
-        HargaObat::factory()->create([
-            'obat_id' => $obat->id,
+        Tarif::factory()->create([
+            'jenis_layanan' => JenisLayanan::Obat,
+            'layanan_id' => $obat->id,
             'penjamin_id' => $penjamin->id,
             'harga' => 2000,
             'berlaku_mulai' => '2026-01-01',
