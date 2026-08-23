@@ -107,7 +107,7 @@ ada rujukan yang cocok.
 
 | Kelas | Tanggung jawab |
 |---|---|
-| `PemesananLab` | Membuat order, menyalin tarif, membebankan ke tagihan |
+| `PemesananLab` | Membuat order, menyalin tarif, membatalkan order |
 | `PengambilanSampel` | Menandai sampel terambil beserta pelakunya |
 | `EntriHasilLab` | Menyimpan nilai dan menghitung penandanya |
 | `ValidasiHasilLab` | Melepas hasil agar terbaca dokter |
@@ -119,8 +119,8 @@ kunjungan masih punya order laboratorium yang belum divalidasi dan belum dibatal
 ## 8. Alur
 
 ```
-Dokter memesan          order berstatus "dipesan"; tarif disalin dan biayanya
-                        langsung masuk tagihan kunjungan
+Dokter memesan          order berstatus "dipesan"; tarif disalin saat itu juga,
+                        biayanya menyusul saat kunjungan diselesaikan
 Analis ambil sampel     "sampel_diambil" beserta waktu dan pelakunya
 Analis entri hasil      "hasil_dientri"; penanda dihitung sistem dari rujukan
                         sesuai jenis kelamin pasien
@@ -130,10 +130,15 @@ Dokter membaca          menyelesaikan kunjungan
 
 ## 9. Aturan bisnis
 
+> **Koreksi saat penyusunan rencana:** aturan 36 semula berbunyi biaya lab masuk
+> tagihan saat order dibuat. Itu mustahil — lab dipesan sebelum kunjungan selesai,
+> sedangkan tagihan baru terbentuk saat kunjungan diselesaikan. Yang disalin saat
+> order dibuat adalah tarifnya; biayanya menyusul bersama tindakan.
+
 Melanjutkan penomoran spec Fase 2. Setiap aturan wajib punya test yang membuktikannya.
 
 35. Order laboratorium wajib memuat minimal satu pemeriksaan.
-36. Biaya laboratorium ditambahkan ke tagihan kunjungan saat order dibuat, dengan tarif disalin ke `order_lab_detail.tarif_satuan`; perubahan master tarif tidak mengubah order lama.
+36. Tarif disalin ke `order_lab_detail.tarif_satuan` saat order dibuat, sehingga perubahan master tarif tidak mengubah order lama. Biayanya masuk tagihan saat kunjungan diselesaikan, bersama tindakan — bukan saat order dibuat, karena pada saat itu tagihannya memang belum ada.
 37. Kunjungan tidak dapat diselesaikan selama masih ada order laboratorium yang belum divalidasi dan belum dibatalkan.
 38. Hasil hanya dapat dientri setelah sampel dinyatakan terambil.
 39. Nilai hasil wajib berupa angka.
@@ -142,8 +147,8 @@ Melanjutkan penomoran spec Fase 2. Setiap aturan wajib punya test yang membuktik
 42. Hasil hanya terbaca dokter setelah divalidasi.
 43. Validasi boleh dilakukan oleh petugas yang sama dengan yang mengentri hasil, dan kedua pelakunya wajib tercatat.
 44. Hasil yang sudah divalidasi tidak dapat diubah langsung; koreksi wajib menyertakan alasan dan tercatat di audit log.
-45. Pembatalan order sebelum sampel diambil mencabut biayanya dari tagihan.
-46. Order yang sampelnya sudah diambil hanya dapat dibatalkan dengan alasan, dan biayanya tetap tertagih karena bahan serta waktu kerjanya sudah terpakai.
+45. Order yang dibatalkan sebelum sampel diambil tidak ikut ditagihkan.
+46. Order yang sampelnya sudah diambil hanya dapat dibatalkan dengan alasan, dan biayanya tetap ditagihkan karena bahan serta waktu kerjanya sudah terpakai.
 
 ## 10. Penanganan kesalahan
 
@@ -162,7 +167,7 @@ implementasinya ada, nama test berbahasa Indonesia.
 Test yang wajib ada, minimal:
 
 - `test_order_lab_wajib_memuat_minimal_satu_pemeriksaan`
-- `test_biaya_lab_masuk_ke_tagihan_saat_order_dibuat`
+- `test_biaya_lab_masuk_ke_tagihan_saat_kunjungan_diselesaikan`
 - `test_perubahan_master_tarif_tidak_mengubah_order_yang_sudah_dibuat`
 - `test_kunjungan_tidak_bisa_diselesaikan_saat_hasil_lab_belum_divalidasi`
 - `test_kunjungan_bisa_diselesaikan_setelah_seluruh_order_divalidasi`
@@ -174,8 +179,8 @@ Test yang wajib ada, minimal:
 - `test_hasil_belum_divalidasi_tidak_terbaca_dokter`
 - `test_validasi_oleh_petugas_yang_sama_dicatat_kedua_pelakunya`
 - `test_koreksi_hasil_tervalidasi_wajib_beralasan_dan_tercatat_di_audit`
-- `test_pembatalan_sebelum_sampel_mencabut_biaya_dari_tagihan`
-- `test_pembatalan_setelah_sampel_tetap_menagihkan_biaya`
+- `test_order_yang_dibatalkan_sebelum_sampel_tidak_ditagihkan`
+- `test_order_yang_dibatalkan_setelah_sampel_tetap_ditagihkan`
 - `test_analis_tidak_bisa_membuka_form_soap`
 - `test_dokter_tidak_bisa_mengentri_hasil_lab`
 
