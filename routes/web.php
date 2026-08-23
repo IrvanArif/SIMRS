@@ -2,6 +2,12 @@
 
 use App\Http\Controllers\AutentikasiController;
 use App\Livewire\Admin\KelolaUser;
+use App\Livewire\Apotek\AntreanResep;
+use App\Livewire\Apotek\KartuStok;
+use App\Livewire\Apotek\LayarPenyerahan;
+use App\Livewire\Apotek\LayarPenyiapan;
+use App\Livewire\Apotek\PenerimaanBatch;
+use App\Livewire\Apotek\PeringatanStok;
 use App\Livewire\Admin\PenampilAuditLog;
 use App\Livewire\Kasir\DaftarTagihan;
 use App\Livewire\Kasir\ProsesPembayaran;
@@ -10,6 +16,7 @@ use App\Livewire\Pendaftaran\FormKunjungan;
 use App\Livewire\Pendaftaran\FormPasien;
 use App\Livewire\Pendaftaran\PapanAntrian;
 use App\Livewire\Master\DaftarDokter;
+use App\Livewire\Master\DaftarHargaObat;
 use App\Livewire\Master\DaftarPoli;
 use App\Livewire\Master\DaftarTarif;
 use App\Livewire\Master\DaftarTindakan;
@@ -77,8 +84,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/rekam-medis/rekap', RekapKunjunganHarian::class)->name('rekam-medis.rekap');
     });
 
+    Route::middleware('role:apoteker')->group(function () {
+        Route::get('/apotek/antrean', AntreanResep::class)->name('apotek.antrean');
+        Route::get('/apotek/siapkan/{resep}', LayarPenyiapan::class)->name('apotek.siapkan');
+        Route::get('/apotek/serahkan/{resep}', LayarPenyerahan::class)->name('apotek.serahkan');
+        Route::get('/apotek/penerimaan', PenerimaanBatch::class)->name('apotek.penerimaan');
+        Route::get('/apotek/kartu-stok/{obat}', KartuStok::class)->name('apotek.kartu-stok');
+        Route::get('/apotek/peringatan', PeringatanStok::class)->name('apotek.peringatan');
+    });
+
     Route::middleware('role:admin')->group(function () {
         Route::get('/master/poli', DaftarPoli::class)->name('master.poli');
+        Route::get('/master/harga-obat', DaftarHargaObat::class)->name('master.harga-obat');
         Route::get('/master/dokter', DaftarDokter::class)->name('master.dokter');
         Route::get('/master/tindakan', DaftarTindakan::class)->name('master.tindakan');
         Route::get('/master/tarif', DaftarTarif::class)->name('master.tarif');
