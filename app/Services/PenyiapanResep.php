@@ -140,7 +140,7 @@ class PenyiapanResep
                 $tagihan = $resep->kunjungan->tagihan;
 
                 if ($tagihan !== null) {
-                    $tagihan->detail()->whereNotNull('resep_detail_id')->delete();
+                    $this->penyusunTagihan->hapusBarisDari($tagihan, ResepDetail::class);
                     $this->penyusunTagihan->hitungUlang($tagihan);
                 }
 

@@ -42,7 +42,8 @@ class PenyusunTagihan
 
             foreach ($baris as $item) {
                 $tagihan->detail()->create([
-                    'tindakan_kunjungan_id' => $item->id,
+                    'sumber_tipe' => $item::class,
+                    'sumber_id' => $item->id,
                     'deskripsi' => $item->tindakan->nama,
                     'jumlah' => $item->jumlah,
                     'tarif_satuan' => $item->tarif_satuan,
@@ -81,7 +82,8 @@ class PenyusunTagihan
                 }
 
                 $tagihan->detail()->create([
-                    'resep_detail_id' => $baris->id,
+                    'sumber_tipe' => $baris::class,
+                    'sumber_id' => $baris->id,
                     'deskripsi' => $baris->obat->nama,
                     'jumlah' => $baris->jumlah_diserahkan,
                     'tarif_satuan' => $baris->harga_satuan,
@@ -91,6 +93,15 @@ class PenyusunTagihan
 
             return $this->hitungUlang($tagihan);
         });
+    }
+
+    /**
+     * Mencabut seluruh baris yang berasal dari satu jenis sumber. Dipakai saat
+     * penyiapan resep dibatalkan, dan nanti saat order laboratorium dibatalkan.
+     */
+    public function hapusBarisDari(Tagihan $tagihan, string $sumberTipe): void
+    {
+        $tagihan->detail()->where('sumber_tipe', $sumberTipe)->delete();
     }
 
     /**

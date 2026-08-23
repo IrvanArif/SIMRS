@@ -168,7 +168,7 @@ class PenyerahanObatTest extends TestCase
         app(PenyiapanResep::class)->batalkan($resep, User::factory()->create(), 'Pasien menolak obat');
 
         $this->assertSame(0, (int) $tagihan->refresh()->total);
-        $this->assertSame(0, $tagihan->detail()->whereNotNull('resep_detail_id')->count());
+        $this->assertSame(0, $tagihan->detail()->where('sumber_tipe', \App\Models\ResepDetail::class)->count());
     }
 
     public function test_pembatalan_wajib_menyertakan_alasan(): void
