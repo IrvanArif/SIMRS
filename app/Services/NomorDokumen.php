@@ -16,6 +16,7 @@ class NomorDokumen
         'resep' => 'RS',
         'tagihan' => 'TG',
         'kuitansi' => 'KW',
+        'lab' => 'LB',
     ];
 
     public function __construct(private readonly PencatatNomor $pencatat) {}

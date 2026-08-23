@@ -79,6 +79,11 @@ class Kunjungan extends Model
         return $this->hasOne(Tagihan::class);
     }
 
+    public function orderLab(): HasMany
+    {
+        return $this->hasMany(OrderLab::class);
+    }
+
     public function scopeAktif(Builder $query): Builder
     {
         return $query->whereNotIn('status', [
