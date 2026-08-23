@@ -45,6 +45,11 @@ class EnumLabTest extends TestCase
     public function test_analis_termasuk_daftar_peran(): void
     {
         $this->assertContains('analis', Peran::semua());
-        $this->assertCount(8, Peran::semua());
+
+        // Seluruh peran yang sudah ada harus tetap ada — inilah yang sebenarnya
+        // ingin dijaga, bukan angka totalnya.
+        foreach (['admisi', 'perawat', 'dokter', 'apoteker', 'kasir', 'rekam_medis', 'admin'] as $peran) {
+            $this->assertContains($peran, Peran::semua());
+        }
     }
 }

@@ -34,7 +34,8 @@ class EnumFarmasiTest extends TestCase
 
     public function test_apoteker_termasuk_daftar_peran(): void
     {
+        // Sengaja tidak menegaskan jumlah total peran: angka itu pasti berubah
+        // tiap fase, dan yang diuji di sini keberadaan apoteker, bukan totalnya.
         $this->assertContains('apoteker', Peran::semua());
-        $this->assertCount(7, Peran::semua());
     }
 }
