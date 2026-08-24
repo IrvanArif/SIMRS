@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             Icd10Seeder::class,
             PenggunaSeeder::class,
             FarmasiSeeder::class,
+            LaboratoriumSeeder::class,
             PasienDummySeeder::class,
             KunjunganDummySeeder::class,
         ]);

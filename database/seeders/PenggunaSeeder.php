@@ -25,6 +25,7 @@ class PenggunaSeeder extends Seeder
             [Peran::RekamMedis, 'Petugas Rekam Medis', 'rekammedis@rs.test'],
             [Peran::Kasir, 'Kasir Rawat Jalan', 'kasir@rs.test'],
             [Peran::Apoteker, 'Apoteker', 'apoteker@rs.test'],
+            [Peran::Analis, 'Analis Laboratorium', 'analis@rs.test'],
             [Peran::Admin, 'Administrator', 'admin@rs.test'],
         ];
 

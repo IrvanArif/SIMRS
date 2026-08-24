@@ -9,11 +9,14 @@ use App\Models\Dokter;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Obat;
+use App\Models\PemeriksaanLab;
 use App\Models\Pasien;
 use App\Models\Penjamin;
 use App\Models\Tindakan;
 use App\Models\User;
 use App\Services\PemeriksaanKlinis;
+use App\Services\PemeriksaanLaboratorium;
+use App\Services\PemesananLab;
 use App\Services\PendaftaranKunjungan;
 use App\Services\PenulisanResep;
 use App\Services\PenyerahanObat;
@@ -48,6 +51,7 @@ class KunjunganDummySeeder extends Seeder
         $dokterUser = User::role(Peran::Dokter->value)->first();
         $kasir = User::role(Peran::Kasir->value)->first();
         $apoteker = User::role(Peran::Apoteker->value)->first();
+        $analis = User::role(Peran::Analis->value)->first();
 
         $pendaftaran = app(PendaftaranKunjungan::class);
         $klinis = app(PemeriksaanKlinis::class);
@@ -56,8 +60,13 @@ class KunjunganDummySeeder extends Seeder
         $pembayaran = app(ProsesPembayaran::class);
         $penyiapan = app(PenyiapanResep::class);
         $penyerahan = app(PenyerahanObat::class);
+        $pemesananLab = app(PemesananLab::class);
+        $lab = app(PemeriksaanLaboratorium::class);
+        $daftarPemeriksaanLab = PemeriksaanLab::where('aktif', true)->pluck('id');
 
         $selesai = 0;
+        $orderLab = 0;
+        $antreLab = 0;
         $disiapkan = 0;
         $diserahkan = 0;
         $dibayar = 0;
@@ -75,8 +84,40 @@ class KunjunganDummySeeder extends Seeder
                 'tanggal' => now()->toDateString(),
             ], $admisi);
 
-            // 30 kunjungan pertama dibiarkan masih mengantre.
+            // 30 kunjungan pertama dibiarkan masih mengantre di poli. Sebagian
+            // diberi order laboratorium yang sengaja berhenti di tiap tahap,
+            // supaya keempat layar analis punya isi saat sistem didemokan.
             if ($indeks < 30) {
+                if ($indeks < 11 && $daftarPemeriksaanLab->isNotEmpty()) {
+                    $order = $pemesananLab->pesan(
+                        $kunjungan,
+                        [$daftarPemeriksaanLab->random()],
+                        $dokterUser,
+                        'Menunggu pengerjaan laboratorium.'
+                    );
+                    $antreLab++;
+
+                    // 5 berhenti di "dipesan", 3 di "sampel diambil", 3 di "menunggu validasi".
+                    if ($indeks >= 5) {
+                        $lab->ambilSampel($order, $analis);
+                    }
+
+                    if ($indeks >= 8) {
+                        $nilai = [];
+
+                        foreach ($order->refresh()->detail as $detail) {
+                            foreach ($detail->pemeriksaan->parameter as $parameter) {
+                                $rujukan = $parameter->rujukan->first();
+                                $nilai[$parameter->id] = $rujukan
+                                    ? round($rujukan->nilai_maks * (rand(70, 130) / 100), 2)
+                                    : rand(1, 100);
+                            }
+                        }
+
+                        $lab->entriHasil($order->refresh(), $nilai, $analis);
+                    }
+                }
+
                 continue;
             }
 
@@ -107,6 +148,37 @@ class KunjunganDummySeeder extends Seeder
                 'jumlah' => rand(5, 15),
                 'aturan_pakai' => '3x1 sesudah makan',
             ]], $dokterUser);
+
+            // Sebagian kunjungan disertai pemeriksaan laboratorium. Urutannya wajib
+            // lab dulu baru kunjungan ditutup — aturan 37 menolak bila terbalik,
+            // dan penolakan itu justru bukti aturannya bekerja.
+            if ($indeks % 4 === 0 && $daftarPemeriksaanLab->isNotEmpty()) {
+                $order = $pemesananLab->pesan(
+                    $kunjungan,
+                    [$daftarPemeriksaanLab->random()],
+                    $dokterUser,
+                    'Menunjang diagnosa kerja.'
+                );
+                $orderLab++;
+
+                $lab->ambilSampel($order, $analis);
+
+                $nilai = [];
+
+                foreach ($order->refresh()->detail as $detail) {
+                    foreach ($detail->pemeriksaan->parameter as $parameter) {
+                        $rujukan = $parameter->rujukan->first();
+                        // Sebagian sengaja di luar rentang supaya penanda abnormal
+                        // benar-benar muncul saat didemokan.
+                        $nilai[$parameter->id] = $rujukan
+                            ? round($rujukan->nilai_maks * (rand(70, 130) / 100), 2)
+                            : rand(1, 100);
+                    }
+                }
+
+                $lab->entriHasil($order->refresh(), $nilai, $analis);
+                $lab->validasi($order->refresh(), $analis);
+            }
 
             $klinis->selesaikan($kunjungan, $dokterUser);
             $selesai++;
@@ -151,7 +223,7 @@ class KunjunganDummySeeder extends Seeder
         $belumLunas = \App\Models\Tagihan::where('status', \App\Enums\StatusTagihan::BelumBayar)->count();
 
         $this->command?->info(
-            "Kunjungan dummy: {$selesai} selesai, {$disiapkan} resep disiapkan, "
+            "Kunjungan dummy: {$selesai} selesai, {$orderLab} order lab, {$disiapkan} resep disiapkan, "
             ."{$diserahkan} obat diserahkan, {$dibayar} dibayar, "
             ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir."
         );
