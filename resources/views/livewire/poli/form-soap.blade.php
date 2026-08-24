@@ -74,6 +74,64 @@
             </ul>
         </div>
 
+        <div class="bg-white p-6 rounded shadow space-y-3">
+            <h2 class="font-semibold">Pemeriksaan Laboratorium</h2>
+
+            <div class="grid sm:grid-cols-2 gap-2">
+                @foreach ($daftarPemeriksaanLab as $pemeriksaan)
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" wire:model="pemeriksaanLabDipilih" value="{{ $pemeriksaan->id }}">
+                        {{ $pemeriksaan->nama }}
+                    </label>
+                @endforeach
+            </div>
+            @error('pemeriksaan') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+
+            <button wire:click="pesanLab" class="bg-slate-800 text-white px-3 py-2 rounded text-sm">
+                Pesan Pemeriksaan
+            </button>
+
+            @forelse ($orderLab as $order)
+                <div class="border-t pt-3 text-sm">
+                    <p class="font-medium">
+                        {{ $order->no_order }} — {{ $order->status->label() }}
+                    </p>
+
+                    @if ($order->terbacaDokter())
+                        {{-- Hasil hanya ditampilkan setelah divalidasi (aturan 42). --}}
+                        @foreach ($order->detail as $detail)
+                            <p class="mt-2 text-slate-600">{{ $detail->pemeriksaan->nama }}</p>
+                            <table class="w-full text-sm">
+                                <tbody>
+                                    @foreach ($detail->hasil as $hasil)
+                                        <tr>
+                                            <td class="py-1">{{ $hasil->parameter->nama }}</td>
+                                            <td class="py-1">{{ $hasil->nilai }} {{ $hasil->parameter->satuan }}</td>
+                                            <td class="py-1 text-right">
+                                                @if ($hasil->abnormal())
+                                                    <span class="font-medium {{ $hasil->penanda === \App\Enums\PenandaHasil::Tinggi ? 'text-red-600' : 'text-amber-600' }}">
+                                                        {{ $hasil->penanda->label() }}
+                                                    </span>
+                                                @elseif ($hasil->penanda === null)
+                                                    <span class="text-slate-400">—</span>
+                                                @else
+                                                    <span class="text-green-700">Normal</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endforeach
+                    @else
+                        <p class="text-slate-500">Hasil belum bisa dibaca — menunggu laboratorium.</p>
+                    @endif
+                </div>
+            @empty
+                <p class="text-sm text-slate-500 border-t pt-3">Belum ada pemeriksaan laboratorium.</p>
+            @endforelse
+        </div>
+
         <div class="flex gap-3">
             <a href="{{ route('poli.resep', $kunjungan) }}" class="bg-slate-200 px-4 py-2 rounded">Tulis Resep</a>
             <button wire:click="selesaikan" class="bg-green-600 text-white px-4 py-2 rounded">

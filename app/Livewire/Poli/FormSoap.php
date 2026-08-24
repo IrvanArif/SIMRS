@@ -5,7 +5,9 @@ namespace App\Livewire\Poli;
 use App\Enums\JenisDiagnosa;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
+use App\Models\PemeriksaanLab;
 use App\Models\Tindakan;
+use App\Services\PemesananLab;
 use App\Services\PemeriksaanKlinis;
 use App\Services\TindakanPelayanan;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -26,6 +28,9 @@ class FormSoap extends Component
     public ?int $icd10_id = null;
     public ?int $tindakan_id = null;
     public int $jumlah_tindakan = 1;
+
+    /** @var list<int> */
+    public array $pemeriksaanLabDipilih = [];
 
     public function mount(Kunjungan $kunjungan): void
     {
@@ -71,6 +76,15 @@ class FormSoap extends Component
         ));
     }
 
+    public function pesanLab(PemesananLab $layanan): void
+    {
+        $this->jalankan(fn () => $layanan->pesan(
+            $this->kunjungan, $this->pemeriksaanLabDipilih, auth()->user()
+        ));
+
+        $this->reset('pemeriksaanLabDipilih');
+    }
+
     public function selesaikan(PemeriksaanKlinis $layanan): void
     {
         $this->jalankan(fn () => $layanan->selesaikan($this->kunjungan, auth()->user()));
@@ -99,6 +113,9 @@ class FormSoap extends Component
         return view('livewire.poli.form-soap', [
             'daftarIcd' => Icd10::orderBy('kode')->limit(50)->get(),
             'daftarTindakan' => Tindakan::where('aktif', true)->orderBy('nama')->get(),
+            'daftarPemeriksaanLab' => PemeriksaanLab::where('aktif', true)->orderBy('nama')->get(),
+            'orderLab' => $this->kunjungan->orderLab()
+                ->with('detail.pemeriksaan', 'detail.hasil.parameter')->get(),
             'riwayat' => $this->kunjungan->pasien->kunjungan()
                 ->where('id', '!=', $this->kunjungan->id)
                 ->with('pemeriksaan', 'diagnosa.icd10')

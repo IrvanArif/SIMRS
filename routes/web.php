@@ -15,6 +15,10 @@ use App\Livewire\Pendaftaran\CariPasien;
 use App\Livewire\Pendaftaran\FormKunjungan;
 use App\Livewire\Pendaftaran\FormPasien;
 use App\Livewire\Pendaftaran\PapanAntrian;
+use App\Livewire\Lab\AntreanOrder;
+use App\Livewire\Lab\LayarEntriHasil;
+use App\Livewire\Lab\LayarSampel;
+use App\Livewire\Lab\LayarValidasi;
 use App\Livewire\Master\DaftarDokter;
 use App\Livewire\Master\DaftarPoli;
 use App\Livewire\Master\DaftarTarif;
@@ -90,6 +94,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/apotek/penerimaan', PenerimaanBatch::class)->name('apotek.penerimaan');
         Route::get('/apotek/kartu-stok/{obat}', KartuStok::class)->name('apotek.kartu-stok');
         Route::get('/apotek/peringatan', PeringatanStok::class)->name('apotek.peringatan');
+    });
+
+    Route::middleware('role:analis')->group(function () {
+        Route::get('/lab/antrean', AntreanOrder::class)->name('lab.antrean');
+        Route::get('/lab/sampel/{order}', LayarSampel::class)->name('lab.sampel');
+        Route::get('/lab/hasil/{order}', LayarEntriHasil::class)->name('lab.hasil');
+        Route::get('/lab/validasi/{order}', LayarValidasi::class)->name('lab.validasi');
     });
 
     Route::middleware('role:admin')->group(function () {
