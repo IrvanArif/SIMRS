@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\StatusOrderLab;
 use App\Enums\StatusTagihan;
 use App\Models\Kunjungan;
 use App\Models\Resep;
@@ -23,24 +24,22 @@ class PenyusunTagihan
         }
 
         return DB::transaction(function () use ($kunjungan) {
-            $baris = $kunjungan->tindakan()->with('tindakan')->get();
-            $total = $baris->sum(fn ($item) => $item->subtotal());
             $ditanggung = $kunjungan->penjamin->ditanggung();
 
             $tagihan = Tagihan::create([
                 'no_tagihan' => $this->nomorDokumen->berikutnya('tagihan', $kunjungan->tanggal),
                 'kunjungan_id' => $kunjungan->id,
                 'penjamin_id' => $kunjungan->penjamin_id,
-                'total' => $total,
+                'total' => 0,
+                'ditanggung_penjamin' => 0,
+                'ditagihkan_ke_pasien' => 0,
                 // Nilai penuh tetap dicatat meski pasien tidak membayar — itu bahan
                 // klaim di fase berikutnya (aturan 14).
-                'ditanggung_penjamin' => $ditanggung ? $total : 0,
-                'ditagihkan_ke_pasien' => $ditanggung ? 0 : $total,
                 'status' => $ditanggung ? StatusTagihan::DitanggungPenjamin : StatusTagihan::BelumBayar,
                 'disusun_pada' => now(),
             ]);
 
-            foreach ($baris as $item) {
+            foreach ($kunjungan->tindakan()->with('tindakan')->get() as $item) {
                 $tagihan->detail()->create([
                     'sumber_tipe' => $item::class,
                     'sumber_id' => $item->id,
@@ -51,7 +50,33 @@ class PenyusunTagihan
                 ]);
             }
 
-            return $tagihan;
+            // Order yang dibatalkan sebelum sampel diambil tidak ditagihkan
+            // (aturan 45); yang dibatalkan setelah sampel tetap ditagihkan karena
+            // bahan dan waktu kerjanya sudah terpakai (aturan 46).
+            $orderLab = $kunjungan->orderLab()
+                ->where(function ($q) {
+                    $q->where('status', '!=', StatusOrderLab::Batal->value)
+                        ->orWhereNotNull('waktu_sampel');
+                })
+                ->with('detail.pemeriksaan')
+                ->get();
+
+            foreach ($orderLab as $order) {
+                foreach ($order->detail as $item) {
+                    $tagihan->detail()->create([
+                        'sumber_tipe' => $item::class,
+                        'sumber_id' => $item->id,
+                        'deskripsi' => $item->pemeriksaan->nama,
+                        'jumlah' => 1,
+                        'tarif_satuan' => $item->tarif_satuan,
+                        'subtotal' => $item->tarif_satuan,
+                    ]);
+                }
+            }
+
+            // Totalnya dihitung dari rinciannya, bukan dijumlahkan terpisah,
+            // supaya angkanya tidak pernah dihitung di dua tempat.
+            return $this->hitungUlang($tagihan);
         });
     }
 

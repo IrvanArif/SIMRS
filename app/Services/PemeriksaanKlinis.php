@@ -119,6 +119,16 @@ class PemeriksaanKlinis
             );
         }
 
+        // Aturan 37: kunjungan ditutup setelah hasil keluar, supaya diagnosanya
+        // benar-benar berdasar hasil — bukan ditulis sambil menunggu.
+        $orderMenunggu = $kunjungan->orderLab()->belumSelesai()->first();
+
+        if ($orderMenunggu !== null) {
+            throw new RuntimeException(
+                "Kunjungan belum bisa diselesaikan: hasil order {$orderMenunggu->no_order} belum divalidasi."
+            );
+        }
+
         return DB::transaction(function () use ($kunjungan) {
             $kunjungan->update([
                 'status' => StatusKunjungan::Selesai,

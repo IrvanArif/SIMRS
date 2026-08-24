@@ -48,6 +48,14 @@ class OrderLab extends Model
         ]);
     }
 
+    /**
+     * Aturan 42: hasil baru boleh dibaca dokter setelah divalidasi.
+     */
+    public function terbacaDokter(): bool
+    {
+        return $this->status === StatusOrderLab::Divalidasi;
+    }
+
     public function totalTarif(): int
     {
         return (int) $this->detail()->sum('tarif_satuan');
