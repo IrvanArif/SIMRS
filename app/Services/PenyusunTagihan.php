@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\StatusOrderLab;
+use App\Enums\StatusOrderRadiologi;
 use App\Enums\StatusTagihan;
 use App\Models\Kunjungan;
 use App\Models\Resep;
@@ -62,6 +63,30 @@ class PenyusunTagihan
                 ->get();
 
             foreach ($orderLab as $order) {
+                foreach ($order->detail as $item) {
+                    $tagihan->detail()->create([
+                        'sumber_tipe' => $item::class,
+                        'sumber_id' => $item->id,
+                        'deskripsi' => $item->pemeriksaan->nama,
+                        'jumlah' => 1,
+                        'tarif_satuan' => $item->tarif_satuan,
+                        'subtotal' => $item->tarif_satuan,
+                    ]);
+                }
+            }
+
+            // Aturan 57: yang dibatalkan sebelum dikerjakan tidak ditagihkan; yang
+            // dibatalkan setelah dikerjakan tetap ditagihkan karena film dan waktu
+            // alatnya sudah terpakai.
+            $orderRadiologi = $kunjungan->orderRadiologi()
+                ->where(function ($q) {
+                    $q->where('status', '!=', StatusOrderRadiologi::Batal->value)
+                        ->orWhereNotNull('waktu_dikerjakan');
+                })
+                ->with('detail.pemeriksaan')
+                ->get();
+
+            foreach ($orderRadiologi as $order) {
                 foreach ($order->detail as $item) {
                     $tagihan->detail()->create([
                         'sumber_tipe' => $item::class,

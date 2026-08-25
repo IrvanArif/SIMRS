@@ -129,6 +129,16 @@ class PemeriksaanKlinis
             );
         }
 
+        // Aturan 50: alasan yang sama berlaku untuk radiologi — diagnosanya harus
+        // berdasar bacaan dokter radiologi, bukan dugaan sambil menunggu.
+        $radiologiMenunggu = $kunjungan->orderRadiologi()->belumSelesai()->first();
+
+        if ($radiologiMenunggu !== null) {
+            throw new RuntimeException(
+                "Kunjungan belum bisa diselesaikan: ekspertise order {$radiologiMenunggu->no_order} belum ditulis."
+            );
+        }
+
         return DB::transaction(function () use ($kunjungan) {
             $kunjungan->update([
                 'status' => StatusKunjungan::Selesai,
