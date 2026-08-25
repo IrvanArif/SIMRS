@@ -34,7 +34,7 @@ class Tarif extends Model
 
     /**
      * Layanan yang ditarifkan tidak memakai relasi polimorfik Eloquent karena
-     * ketiganya berbeda tabel dan tidak pernah dimuat bersamaan — pemanggilnya
+     * keempatnya berbeda tabel dan tidak pernah dimuat bersamaan — pemanggilnya
      * selalu sudah tahu jenis apa yang sedang ia tangani.
      */
     public function namaLayanan(): string
@@ -42,7 +42,8 @@ class Tarif extends Model
         return match ($this->jenis_layanan) {
             JenisLayanan::Tindakan => Tindakan::find($this->layanan_id)?->nama ?? '—',
             JenisLayanan::Obat => Obat::find($this->layanan_id)?->nama ?? '—',
-            JenisLayanan::Lab => '—',
+            JenisLayanan::Lab => PemeriksaanLab::find($this->layanan_id)?->nama ?? '—',
+            JenisLayanan::Radiologi => PemeriksaanRadiologi::find($this->layanan_id)?->nama ?? '—',
         };
     }
 }

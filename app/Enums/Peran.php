@@ -11,6 +11,7 @@ enum Peran: string
     case Kasir = 'kasir';
     case Apoteker = 'apoteker';
     case Analis = 'analis';
+    case Radiografer = 'radiografer';
     case Admin = 'admin';
 
     public static function semua(): array
