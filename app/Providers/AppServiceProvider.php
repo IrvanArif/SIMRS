@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\BatchObat;
 use App\Models\Diagnosa;
+use App\Models\EkspertiseRadiologi;
 use App\Models\HasilLab;
 use App\Models\Kunjungan;
 use App\Models\OrderLab;
@@ -43,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         return [
             Pasien::class, Kunjungan::class, Pemeriksaan::class,
             Diagnosa::class, Tagihan::class, BatchObat::class, OrderLab::class,
-            HasilLab::class, OrderRadiologi::class,
+            HasilLab::class, OrderRadiologi::class, EkspertiseRadiologi::class,
         ];
     }
 }
