@@ -17,6 +17,7 @@ class NomorDokumen
         'tagihan' => 'TG',
         'kuitansi' => 'KW',
         'lab' => 'LB',
+        'radiologi' => 'RD',
     ];
 
     public function __construct(private readonly PencatatNomor $pencatat) {}

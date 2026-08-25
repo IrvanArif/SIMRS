@@ -84,6 +84,11 @@ class Kunjungan extends Model
         return $this->hasMany(OrderLab::class);
     }
 
+    public function orderRadiologi(): HasMany
+    {
+        return $this->hasMany(OrderRadiologi::class);
+    }
+
     public function scopeAktif(Builder $query): Builder
     {
         return $query->whereNotIn('status', [

@@ -7,6 +7,7 @@ use App\Models\Diagnosa;
 use App\Models\HasilLab;
 use App\Models\Kunjungan;
 use App\Models\OrderLab;
+use App\Models\OrderRadiologi;
 use App\Models\Pasien;
 use App\Models\Pemeriksaan;
 use App\Models\Tagihan;
@@ -42,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         return [
             Pasien::class, Kunjungan::class, Pemeriksaan::class,
             Diagnosa::class, Tagihan::class, BatchObat::class, OrderLab::class,
-            HasilLab::class,
+            HasilLab::class, OrderRadiologi::class,
         ];
     }
 }
