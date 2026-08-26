@@ -26,6 +26,7 @@ class PenggunaSeeder extends Seeder
             [Peran::Kasir, 'Kasir Rawat Jalan', 'kasir@rs.test'],
             [Peran::Apoteker, 'Apoteker', 'apoteker@rs.test'],
             [Peran::Analis, 'Analis Laboratorium', 'analis@rs.test'],
+            [Peran::Radiografer, 'Radiografer', 'radiografer@rs.test'],
             [Peran::Admin, 'Administrator', 'admin@rs.test'],
         ];
 
@@ -35,6 +36,14 @@ class PenggunaSeeder extends Seeder
                 ['name' => $nama, 'password' => Hash::make('rahasia123'), 'aktif' => true]
             )->syncRoles([$peran->value]);
         }
+
+        // Dokter radiologi tidak diikat ke satu Dokter poli: dokter_id menautkan
+        // pengguna ke jadwal poli rawat jalan, sedangkan yang membaca film tidak
+        // memegang poli. Yang menentukan kewenangannya adalah perannya.
+        User::updateOrCreate(
+            ['email' => 'dokterradiologi@rs.test'],
+            ['name' => 'Dokter Radiologi', 'password' => Hash::make('rahasia123'), 'aktif' => true]
+        )->syncRoles([Peran::Dokter->value]);
 
         $dokter = Dokter::orderBy('id')->first();
 

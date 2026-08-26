@@ -1,9 +1,10 @@
 # SIMRS — Sistem Informasi Manajemen Rumah Sakit
 
 Aplikasi Laravel untuk RS Sampel. Dikembangkan bertahap;
-**Fase 1 (Fondasi + Rawat Jalan)**, **Fase 2 (Farmasi)**, dan **Fase 3 (Laboratorium)**
-sudah selesai, mencakup satu alur utuh dari pasien mendaftar, diperiksa,
-menunggu hasil laboratorium, menerima obat, sampai tagihannya diselesaikan kasir.
+**Fase 1 (Fondasi + Rawat Jalan)**, **Fase 2 (Farmasi)**, **Fase 3 (Laboratorium)**,
+dan **Fase 4 (Radiologi)** sudah selesai, mencakup satu alur utuh dari pasien
+mendaftar, diperiksa, menunggu hasil laboratorium dan pencitraan, menerima obat,
+sampai tagihannya diselesaikan kasir.
 
 Tahap ini memakai **data dummy**. Belum ada migrasi data pasien nyata dan belum ada
 integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase berikutnya.
@@ -16,12 +17,14 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 - Rencana Fase 2: [`docs/superpowers/plans/2026-08-18-simrs-fase2-farmasi.md`](docs/superpowers/plans/2026-08-18-simrs-fase2-farmasi.md)
 - Spesifikasi Fase 3 (Laboratorium): [`docs/superpowers/specs/2026-08-18-simrs-fase3-laboratorium-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase3-laboratorium-design.md)
 - Rencana Fase 3: [`docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md`](docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md)
+- Spesifikasi Fase 4 (Radiologi): [`docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md)
+- Rencana Fase 4: [`docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md`](docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md)
 
 ## Cakupan Fase 1
 
 | Modul | Isi |
 |---|---|
-| Autentikasi & hak akses | 6 peran, ditegakkan lewat Policy (bukan sekadar menu tersembunyi) |
+| Autentikasi & hak akses | 9 peran, ditegakkan lewat Policy (bukan sekadar menu tersembunyi) |
 | Master data | Poli, dokter, jadwal, penjamin, tindakan, tarif per penjamin, ICD-10, obat |
 | Pendaftaran | Cari/daftar pasien, buat kunjungan, nomor antrian per poli per hari, cetak karcis |
 | Poli | Tanda vital oleh perawat, SOAP + diagnosa ICD-10 + tindakan + resep oleh dokter |
@@ -30,10 +33,11 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 | Admin | Kelola pengguna, master data, penampil audit log |
 | Farmasi | Stok per batch dengan kedaluwarsa, penyiapan resep beralokasi FEFO, penyerahan obat, kartu stok, penyesuaian opname |
 | Laboratorium | Master pemeriksaan berparameter dan nilai rujukan per jenis kelamin, order dokter, pengambilan sampel, entri hasil berpenanda otomatis, validasi sebelum terbaca dokter |
+| Radiologi | Master pemeriksaan lima modalitas beserta instruksi persiapan, order berindikasi klinis wajib, pelaksanaan pencitraan bernomor film oleh radiografer, ekspertise naratif oleh dokter |
 | Display antrian | Halaman publik tanpa login untuk layar ruang tunggu |
 
-Fase berikutnya: radiologi → rawat inap → klaim & pelaporan (BPJS, INA-CBG,
-SATUSEHAT) → inventori, SDM, akuntansi.
+Fase berikutnya: rawat inap → klaim & pelaporan (BPJS, INA-CBG, SATUSEHAT)
+→ inventori, SDM, akuntansi.
 
 ## Alur laboratorium
 
@@ -54,6 +58,39 @@ Rujukan dibedakan menurut jenis kelamin karena rentang normalnya memang
 berbeda: hemoglobin 16 g/dL normal bagi laki-laki tetapi tinggi bagi
 perempuan. Parameter tanpa rujukan yang cocok tidak ditebak — nilainya
 tersimpan tanpa penanda dan kejadiannya dicatat agar masternya dilengkapi.
+
+## Alur radiologi
+
+Seperti laboratorium, kunjungan tertahan sampai hasilnya dibaca. Bedanya
+hasil pencitraan bukan angka: tidak ada nilai rujukan dan tidak ada penanda
+otomatis — yang menentukan artinya adalah kalimat dokter.
+
+```
+Dokter memesan       indikasi klinis wajib diisi; tanpa itu pasien menerima
+                     radiasi tanpa alasan yang tercatat
+Radiografer          menandai pencitraan dikerjakan disertai nomor film;
+                     tanpa nomor itu citranya tidak bisa ditemukan lagi
+Dokter radiologi     menulis temuan dan kesan (saran opsional)
+                     baru sejak titik ini hasilnya terbaca dokter pengirim
+Dokter pengirim      menutup kunjungan; tagihan memuat biaya radiologi
+```
+
+**Radiografer dan dokter dipisah dengan sengaja.** Radiografer mengoperasikan
+alat dan mengarsipkan citranya; menyimpulkan apa arti citra itu adalah tindakan
+medis, jadi hanya pengguna berperan `dokter` yang boleh menulis ekspertise.
+Keduanya tercatat terpisah pada ordernya (`dikerjakan_oleh` dan `ditulis_oleh`),
+sehingga saat hasilnya dipersoalkan di kemudian hari jelas siapa mengerjakan apa.
+
+Bacaan yang sudah ditulis tidak bisa ditimpa diam-diam: perubahannya wajib
+melewati koreksi beralasan yang tercatat di audit log, dan barisnya dikunci
+selama transaksi supaya dua dokter tidak bisa saling menimpa.
+
+Order yang dibatalkan sebelum dikerjakan tidak ditagihkan; yang dibatalkan
+setelah dikerjakan tetap ditagihkan, karena film dan waktu alatnya sudah terpakai.
+
+**Citra tidak disimpan sebagai berkas.** Yang dicatat hanya nomor film dan
+lokasi arsipnya. Menyimpan dan menampilkan citra DICOM adalah pekerjaan PACS,
+proyek tersendiri di luar cakupan SIMRS ini.
 
 ## Alur apotek
 
@@ -123,6 +160,8 @@ Seluruhnya berkata sandi `rahasia123`.
 | `rekammedis@rs.test` | Rekam Medis | Telusur rekam medis, koreksi data, rekap harian |
 | `apoteker@rs.test` | Apoteker | Siapkan dan serahkan obat, terima batch, kelola stok |
 | `analis@rs.test` | Analis | Ambil sampel, entri hasil, validasi |
+| `radiografer@rs.test` | Radiografer | Antrean radiologi, tandai pencitraan dikerjakan |
+| `dokterradiologi@rs.test` | Dokter | Tulis dan koreksi ekspertise radiologi |
 | `kasir@rs.test` | Kasir | Proses pembayaran, cetak kuitansi |
 | `admin@rs.test` | Admin | Master data, kelola pengguna, audit log |
 
@@ -159,6 +198,7 @@ Aturan yang punya konsekuensi tinggal di `app/Services`:
 - `PencariHargaObat`, `PenerimaanObat` — harga obat per penjamin dan penerimaan batch.
 - `PenyiapanResep`, `PenyerahanObat`, `PenyesuaianStok` — alokasi FEFO, penyerahan obat, koreksi opname.
 - `PemesananLab`, `PemeriksaanLaboratorium`, `PenandaNilai` — order lab, alur sampel sampai validasi, penandaan nilai abnormal.
+- `PemesananRadiologi`, `PelaksanaanRadiologi`, `PenulisanEkspertise` — order radiologi, pelaksanaan pencitraan, penulisan dan koreksi ekspertise.
 
 Sejak Fase 3, seluruh harga tinggal di satu tabel `tarif` berkolom jenis layanan,
 dan `tagihan_detail` menyimpan sumbernya secara polimorfik. Dengan begitu rincian

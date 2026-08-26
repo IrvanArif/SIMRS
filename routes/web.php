@@ -107,8 +107,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/lab/validasi/{order}', LayarValidasi::class)->name('lab.validasi');
     });
 
-    Route::middleware('role:radiografer')->group(function () {
+    // Antrean dibuka juga untuk dokter: itulah satu-satunya daftar order, jadi
+    // tanpa akses ini layar ekspertise tidak bisa dijangkau dari mana pun.
+    Route::middleware('role:radiografer|dokter')->group(function () {
         Route::get('/radiologi/antrean', AntreanOrderRadiologi::class)->name('radiologi.antrean');
+    });
+
+    Route::middleware('role:radiografer')->group(function () {
         Route::get('/radiologi/kerjakan/{order}', LayarPelaksanaan::class)->name('radiologi.kerjakan');
     });
 

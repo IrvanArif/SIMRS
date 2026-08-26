@@ -18,6 +18,7 @@ use App\Models\Penjamin;
 use App\Models\Tarif;
 use App\Models\User;
 use App\Services\PelaksanaanRadiologi;
+use App\Services\PenulisanEkspertise;
 use App\Services\PemesananRadiologi;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -235,6 +236,51 @@ class LayarRadiologiTest extends TestCase
             ->assertHasErrors('indikasi_klinis');
 
         $this->assertSame(0, $kunjungan->refresh()->orderRadiologi()->count());
+    }
+
+    public function test_ekspertise_yang_sudah_ditulis_tampil_di_layar_soap_dokter_pengirim(): void
+    {
+        $kunjungan = Kunjungan::factory()->create(['penjamin_id' => $this->umum->id]);
+        $dokterPengirim = $this->dokter($kunjungan);
+
+        $order = app(PemesananRadiologi::class)
+            ->pesan($kunjungan, [$this->usg->id], $dokterPengirim, 'Nyeri perut kanan atas');
+
+        // Sebelum dibaca, yang tampil hanya keterangan menunggu — bukan citranya.
+        Livewire::actingAs($dokterPengirim)
+            ->test(FormSoap::class, ['kunjungan' => $kunjungan])
+            ->assertSee('Ekspertise belum ditulis')
+            ->assertDontSee('Kolelitiasis');
+
+        app(PelaksanaanRadiologi::class)->kerjakan($order, 'FILM-1', $this->radiografer());
+
+        $isi = $this->bacaan($order);
+        app(PenulisanEkspertise::class)->tulis($order->refresh(), [
+            $order->detail->first()->id => $isi,
+        ], $this->dokter());
+
+        Livewire::actingAs($dokterPengirim)
+            ->test(FormSoap::class, ['kunjungan' => $kunjungan->refresh()])
+            ->assertSee($isi['kesan'])
+            ->assertSee($isi['saran']);
+    }
+
+    public function test_dokter_bisa_membuka_antrean_untuk_menemukan_order_yang_menunggu_ekspertise(): void
+    {
+        // Tanpa ini layar ekspertise tidak bisa dijangkau dari mana pun: antrean
+        // adalah satu-satunya daftar order yang ada.
+        $order = $this->order();
+        app(PelaksanaanRadiologi::class)->kerjakan($order, 'FILM-1', $this->radiografer());
+
+        $this->actingAs($this->dokter())
+            ->get('/radiologi/antrean')
+            ->assertOk();
+
+        Livewire::actingAs($this->dokter())
+            ->test(AntreanOrder::class)
+            ->set('status', StatusOrderRadiologi::Dikerjakan->value)
+            ->assertSee($order->no_order)
+            ->assertSee(route('radiologi.ekspertise', $order->id));
     }
 
     public function test_radiografer_tidak_bisa_membuka_layar_kasir(): void

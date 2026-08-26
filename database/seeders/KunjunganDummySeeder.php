@@ -10,14 +10,18 @@ use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Obat;
 use App\Models\PemeriksaanLab;
+use App\Models\PemeriksaanRadiologi;
 use App\Models\Pasien;
 use App\Models\Penjamin;
 use App\Models\Tindakan;
 use App\Models\User;
 use App\Services\PemeriksaanKlinis;
 use App\Services\PemeriksaanLaboratorium;
+use App\Services\PelaksanaanRadiologi;
 use App\Services\PemesananLab;
+use App\Services\PemesananRadiologi;
 use App\Services\PendaftaranKunjungan;
+use App\Services\PenulisanEkspertise;
 use App\Services\PenulisanResep;
 use App\Services\PenyerahanObat;
 use App\Services\PenyiapanResep;
@@ -52,6 +56,8 @@ class KunjunganDummySeeder extends Seeder
         $kasir = User::role(Peran::Kasir->value)->first();
         $apoteker = User::role(Peran::Apoteker->value)->first();
         $analis = User::role(Peran::Analis->value)->first();
+        $radiografer = User::role(Peran::Radiografer->value)->first();
+        $dokterRadiologi = User::where('email', 'dokterradiologi@rs.test')->first();
 
         $pendaftaran = app(PendaftaranKunjungan::class);
         $klinis = app(PemeriksaanKlinis::class);
@@ -63,10 +69,16 @@ class KunjunganDummySeeder extends Seeder
         $pemesananLab = app(PemesananLab::class);
         $lab = app(PemeriksaanLaboratorium::class);
         $daftarPemeriksaanLab = PemeriksaanLab::where('aktif', true)->pluck('id');
+        $pemesananRadiologi = app(PemesananRadiologi::class);
+        $pelaksanaan = app(PelaksanaanRadiologi::class);
+        $ekspertise = app(PenulisanEkspertise::class);
+        $daftarPemeriksaanRadiologi = PemeriksaanRadiologi::where('aktif', true)->pluck('id');
 
         $selesai = 0;
         $orderLab = 0;
         $antreLab = 0;
+        $orderRadiologi = 0;
+        $antreRadiologi = 0;
         $disiapkan = 0;
         $diserahkan = 0;
         $dibayar = 0;
@@ -115,6 +127,25 @@ class KunjunganDummySeeder extends Seeder
                         }
 
                         $lab->entriHasil($order->refresh(), $nilai, $analis);
+                    }
+                }
+
+                // Order radiologi yang sengaja berhenti di dua tahap: 4 menunggu
+                // dikerjakan radiografer, 3 menunggu dibaca dokter radiologi.
+                if ($indeks >= 11 && $indeks < 18 && $daftarPemeriksaanRadiologi->isNotEmpty()) {
+                    $orderRad = $pemesananRadiologi->pesan(
+                        $kunjungan,
+                        [$daftarPemeriksaanRadiologi->random()],
+                        $dokterUser,
+                        'Menunggu pemeriksaan pencitraan.'
+                    );
+                    $antreRadiologi++;
+
+                    if ($indeks >= 15) {
+                        $pelaksanaan->kerjakan(
+                            $orderRad, 'FILM-'.now()->format('Y').'-'.str_pad((string) $indeks, 4, '0', STR_PAD_LEFT),
+                            $radiografer
+                        );
                     }
                 }
 
@@ -180,6 +211,35 @@ class KunjunganDummySeeder extends Seeder
                 $lab->validasi($order->refresh(), $analis);
             }
 
+            // Sebagian kunjungan disertai pencitraan. Sama seperti lab, urutannya
+            // wajib tuntas sebelum kunjungan ditutup — aturan 50 menolak bila belum.
+            if ($indeks % 5 === 0 && $daftarPemeriksaanRadiologi->isNotEmpty()) {
+                $orderRad = $pemesananRadiologi->pesan(
+                    $kunjungan,
+                    [$daftarPemeriksaanRadiologi->random()],
+                    $dokterUser,
+                    'Menunjang diagnosa kerja.'
+                );
+                $orderRadiologi++;
+
+                $pelaksanaan->kerjakan(
+                    $orderRad, 'FILM-'.now()->format('Y').'-'.str_pad((string) $indeks, 4, '0', STR_PAD_LEFT),
+                    $radiografer
+                );
+
+                $bacaan = [];
+
+                foreach ($orderRad->refresh()->detail as $detail) {
+                    $bacaan[$detail->id] = [
+                        'temuan' => 'Tidak tampak kelainan bermakna pada '.strtolower($detail->pemeriksaan->nama).'.',
+                        'kesan' => 'Dalam batas normal.',
+                        'saran' => null,
+                    ];
+                }
+
+                $ekspertise->tulis($orderRad->refresh(), $bacaan, $dokterRadiologi);
+            }
+
             $klinis->selesaikan($kunjungan, $dokterUser);
             $selesai++;
 
@@ -223,9 +283,10 @@ class KunjunganDummySeeder extends Seeder
         $belumLunas = \App\Models\Tagihan::where('status', \App\Enums\StatusTagihan::BelumBayar)->count();
 
         $this->command?->info(
-            "Kunjungan dummy: {$selesai} selesai, {$orderLab} order lab, {$disiapkan} resep disiapkan, "
-            ."{$diserahkan} obat diserahkan, {$dibayar} dibayar, "
-            ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir."
+            "Kunjungan dummy: {$selesai} selesai, {$orderLab} order lab, {$orderRadiologi} order radiologi, "
+            ."{$disiapkan} resep disiapkan, {$diserahkan} obat diserahkan, {$dibayar} dibayar, "
+            ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir, "
+            ."{$antreLab} order lab dan {$antreRadiologi} order radiologi masih mengantre."
         );
     }
 }

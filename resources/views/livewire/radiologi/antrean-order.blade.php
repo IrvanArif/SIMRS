@@ -31,10 +31,26 @@
                         </td>
                         <td class="px-4 py-2 text-slate-500">{{ $order->no_film ?? '—' }}</td>
                         <td class="px-4 py-2 text-right">
+                            {{-- Tautannya mengikuti kewenangan pembaca: radiografer
+                                 mengerjakan, dokter membaca. --}}
                             @if ($order->status === \App\Enums\StatusOrderRadiologi::Dipesan)
-                                <a href="{{ route('radiologi.kerjakan', $order) }}" class="text-blue-600">Kerjakan</a>
+                                @can('kerjakan', $order)
+                                    <a href="{{ route('radiologi.kerjakan', $order) }}" class="text-blue-600">Kerjakan</a>
+                                @else
+                                    <span class="text-slate-500">Menunggu radiografer</span>
+                                @endcan
                             @elseif ($order->status === \App\Enums\StatusOrderRadiologi::Dikerjakan)
-                                <span class="text-slate-500">Menunggu dokter radiologi</span>
+                                @can('ekspertise', $order)
+                                    <a href="{{ route('radiologi.ekspertise', $order) }}" class="text-blue-600">Tulis Ekspertise</a>
+                                @else
+                                    <span class="text-slate-500">Menunggu dokter radiologi</span>
+                                @endcan
+                            @elseif ($order->status === \App\Enums\StatusOrderRadiologi::Selesai)
+                                @can('ekspertise', $order)
+                                    <a href="{{ route('radiologi.ekspertise', $order) }}" class="text-slate-600">Lihat / Koreksi</a>
+                                @else
+                                    <span class="text-slate-400">—</span>
+                                @endcan
                             @else
                                 <span class="text-slate-400">—</span>
                             @endif
