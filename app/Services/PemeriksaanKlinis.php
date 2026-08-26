@@ -119,6 +119,15 @@ class PemeriksaanKlinis
             );
         }
 
+        // Aturan 74: masa rawat inap punya penutupnya sendiri. Menutup lewat
+        // sini akan melewatkan pelepasan bed dan pencatatan cara pulang.
+        if ($kunjungan->sedangDirawatInap()) {
+            throw new RuntimeException(
+                'Kunjungan ini sedang rawat inap. Penutupnya adalah pemulangan pasien, '
+                .'bukan penyelesaian kunjungan poli.'
+            );
+        }
+
         // Aturan 37: kunjungan ditutup setelah hasil keluar, supaya diagnosanya
         // benar-benar berdasar hasil — bukan ditulis sambil menunggu.
         $orderMenunggu = $kunjungan->orderLab()->belumSelesai()->first();
