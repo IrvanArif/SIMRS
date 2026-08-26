@@ -89,6 +89,21 @@ class Kunjungan extends Model
         return $this->hasMany(OrderRadiologi::class);
     }
 
+    public function rawatInap(): HasOne
+    {
+        return $this->hasOne(RawatInap::class);
+    }
+
+    /**
+     * Kunjungan disebut rawat inap bila punya masa rawat yang masih berjalan.
+     * Tidak ada kolom penanda terpisah — satu sumber kebenaran, tidak ada dua
+     * yang bisa berselisih.
+     */
+    public function sedangDirawatInap(): bool
+    {
+        return $this->rawatInap()->aktif()->exists();
+    }
+
     public function scopeAktif(Builder $query): Builder
     {
         return $query->whereNotIn('status', [
