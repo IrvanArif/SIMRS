@@ -201,6 +201,53 @@ class EkspertiseRadiologiTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['alasan' => 'Salah membaca sisi']);
     }
 
+    public function test_objek_order_usang_tidak_bisa_menimpa_ekspertise_yang_sudah_ditulis(): void
+    {
+        $order = $this->order();
+        $dokter = User::factory()->create();
+
+        app(PelaksanaanRadiologi::class)->kerjakan($order, 'FILM-1', User::factory()->create());
+
+        // Dokter pertama membuka layar; objek ini akan tetap berstatus dikerjakan
+        // di memori meski dokter lain sudah menulis ekspertisenya lebih dulu.
+        $usang = OrderRadiologi::find($order->id);
+
+        app(PenulisanEkspertise::class)
+            ->tulis($order->refresh(), $this->bacaan($order), $dokter);
+
+        // Tanpa penguncian, tulis() akan lolos dan menimpa bacaan dokter pertama
+        // tanpa alasan dan tanpa jejak audit — pintu belakang aturan 56.
+        try {
+            app(PenulisanEkspertise::class)->tulis(
+                $usang, $this->bacaan($order, ['kesan' => 'Normal.']), User::factory()->create()
+            );
+            $this->fail('Ekspertise yang sudah ditulis seharusnya tidak bisa ditimpa lewat tulis().');
+        } catch (RuntimeException $e) {
+            // Inilah yang diharapkan.
+        }
+
+        $this->assertSame('Bronkitis kronis.', EkspertiseRadiologi::first()->kesan);
+        $this->assertSame($dokter->id, $order->refresh()->ditulis_oleh);
+    }
+
+    public function test_koreksi_menolak_order_yang_dibatalkan_di_tengah_jalan(): void
+    {
+        $order = $this->order();
+        $dokter = User::factory()->create();
+
+        app(PelaksanaanRadiologi::class)->kerjakan($order, 'FILM-1', User::factory()->create());
+        app(PenulisanEkspertise::class)->tulis($order->refresh(), $this->bacaan($order), $dokter);
+
+        $usang = OrderRadiologi::find($order->id);
+        $order->refresh()->update(['status' => StatusOrderRadiologi::Batal]);
+
+        $this->expectException(RuntimeException::class);
+
+        app(PenulisanEkspertise::class)->koreksi(
+            $usang, $this->bacaan($order, ['kesan' => 'Normal.']), $dokter, 'Perbaikan'
+        );
+    }
+
     public function test_koreksi_hanya_berlaku_untuk_ekspertise_yang_sudah_ditulis(): void
     {
         $order = $this->order();

@@ -32,15 +32,29 @@ class PenulisanEkspertise
         $tervalidasi = $this->validasiBacaan($bacaan);
 
         return DB::transaction(function () use ($order, $tervalidasi, $dokter) {
-            $this->simpan($order, $tervalidasi);
+            $terkunci = $this->kunci($order);
 
-            $order->update([
+            // Statusnya diperiksa ulang dari basis data, bukan dari objek yang
+            // dibawa pemanggil: layar dokter memegang objeknya lintas permintaan,
+            // jadi objek yang sudah usang bisa lolos pemeriksaan di atas dan
+            // menimpa bacaan dokter lain tanpa alasan dan tanpa jejak — persis
+            // jalan memutar yang ingin dicegah aturan 56.
+            if (! $terkunci->status->bisaDiekspertise()) {
+                throw new RuntimeException(
+                    "Ekspertise order {$terkunci->no_order} sudah ditulis dokter lain. "
+                    .'Perubahan atas bacaan yang sudah ada harus lewat koreksi beralasan.'
+                );
+            }
+
+            $this->simpan($terkunci, $tervalidasi);
+
+            $terkunci->update([
                 'status' => StatusOrderRadiologi::Selesai,
                 'waktu_ekspertise' => now(),
                 'ditulis_oleh' => $dokter->id,
             ]);
 
-            return $order->refresh();
+            return $terkunci->refresh();
         });
     }
 
@@ -67,16 +81,34 @@ class PenulisanEkspertise
 
         return KonteksAudit::dengan(trim($alasan), function () use ($order, $tervalidasi, $dokter) {
             return DB::transaction(function () use ($order, $tervalidasi, $dokter) {
-                $this->simpan($order, $tervalidasi);
+                $terkunci = $this->kunci($order);
 
-                $order->update([
+                if ($terkunci->status !== StatusOrderRadiologi::Selesai) {
+                    throw new RuntimeException(
+                        "Order {$terkunci->no_order} berstatus {$terkunci->status->label()} "
+                        .'dan ekspertisenya tidak bisa dikoreksi.'
+                    );
+                }
+
+                $this->simpan($terkunci, $tervalidasi);
+
+                $terkunci->update([
                     'waktu_ekspertise' => now(),
                     'ditulis_oleh' => $dokter->id,
                 ]);
 
-                return $order->refresh();
+                return $terkunci->refresh();
             });
         });
+    }
+
+    /**
+     * Mengunci barisnya selama transaksi supaya dua dokter tidak bisa menulis
+     * bacaan atas order yang sama secara bersamaan.
+     */
+    private function kunci(OrderRadiologi $order): OrderRadiologi
+    {
+        return OrderRadiologi::whereKey($order->getKey())->lockForUpdate()->firstOrFail();
     }
 
     /**
