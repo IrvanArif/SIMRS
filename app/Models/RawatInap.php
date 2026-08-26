@@ -59,6 +59,11 @@ class RawatInap extends Model
         return $this->hasMany(OkupansiBed::class)->orderBy('id');
     }
 
+    public function catatan(): HasMany
+    {
+        return $this->hasMany(CatatanPerkembangan::class)->orderBy('waktu')->orderBy('id');
+    }
+
     public function bedSekarang(): ?Bed
     {
         return $this->okupansi()->berjalan()->first()?->bed;
