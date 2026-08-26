@@ -7,6 +7,7 @@ enum StatusKunjungan: string
     case Terdaftar = 'terdaftar';
     case DiperiksaPerawat = 'diperiksa_perawat';
     case DiperiksaDokter = 'diperiksa_dokter';
+    case DalamPerawatan = 'dalam_perawatan';
     case Selesai = 'selesai';
     case Batal = 'batal';
 
@@ -21,6 +22,7 @@ enum StatusKunjungan: string
             self::Terdaftar => 'Terdaftar',
             self::DiperiksaPerawat => 'Diperiksa Perawat',
             self::DiperiksaDokter => 'Diperiksa Dokter',
+            self::DalamPerawatan => 'Dalam Perawatan',
             self::Selesai => 'Selesai',
             self::Batal => 'Batal',
         };

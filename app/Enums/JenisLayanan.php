@@ -8,6 +8,7 @@ enum JenisLayanan: string
     case Obat = 'obat';
     case Lab = 'lab';
     case Radiologi = 'radiologi';
+    case Kamar = 'kamar';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum JenisLayanan: string
             self::Obat => 'Obat',
             self::Lab => 'Pemeriksaan Laboratorium',
             self::Radiologi => 'Pemeriksaan Radiologi',
+            self::Kamar => 'Kamar Rawat Inap',
         };
     }
 }
