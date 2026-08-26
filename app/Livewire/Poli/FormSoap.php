@@ -6,8 +6,10 @@ use App\Enums\JenisDiagnosa;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\PemeriksaanLab;
+use App\Models\PemeriksaanRadiologi;
 use App\Models\Tindakan;
 use App\Services\PemesananLab;
+use App\Services\PemesananRadiologi;
 use App\Services\PemeriksaanKlinis;
 use App\Services\TindakanPelayanan;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -31,6 +33,11 @@ class FormSoap extends Component
 
     /** @var list<int> */
     public array $pemeriksaanLabDipilih = [];
+
+    /** @var list<int> */
+    public array $pemeriksaanRadiologiDipilih = [];
+
+    public string $indikasiRadiologi = '';
 
     public function mount(Kunjungan $kunjungan): void
     {
@@ -78,11 +85,24 @@ class FormSoap extends Component
 
     public function pesanLab(PemesananLab $layanan): void
     {
-        $this->jalankan(fn () => $layanan->pesan(
+        // Pilihan hanya dikosongkan bila ordernya benar-benar tercatat; kalau
+        // ditolak, dokter tidak perlu mencentang ulang dari awal.
+        if ($this->jalankan(fn () => $layanan->pesan(
             $this->kunjungan, $this->pemeriksaanLabDipilih, auth()->user()
+        ))) {
+            $this->reset('pemeriksaanLabDipilih');
+        }
+    }
+
+    public function pesanRadiologi(PemesananRadiologi $layanan): void
+    {
+        $berhasil = $this->jalankan(fn () => $layanan->pesan(
+            $this->kunjungan, $this->pemeriksaanRadiologiDipilih, auth()->user(), $this->indikasiRadiologi
         ));
 
-        $this->reset('pemeriksaanLabDipilih');
+        if ($berhasil) {
+            $this->reset('pemeriksaanRadiologiDipilih', 'indikasiRadiologi');
+        }
     }
 
     public function selesaikan(PemeriksaanKlinis $layanan): void
@@ -94,7 +114,7 @@ class FormSoap extends Component
      * RuntimeException dipetakan ke kunci "penyelesaian" supaya pesan seperti
      * "diagnosa primer belum ditetapkan" tampil di dekat tombol, bukan jadi error 500.
      */
-    private function jalankan(callable $aksi): void
+    private function jalankan(callable $aksi): bool
     {
         try {
             $aksi();
@@ -103,9 +123,15 @@ class FormSoap extends Component
             foreach ($e->errors() as $kolom => $pesan) {
                 $this->addError($kolom, $pesan[0]);
             }
+
+            return false;
         } catch (RuntimeException $e) {
             $this->addError('penyelesaian', $e->getMessage());
+
+            return false;
         }
+
+        return true;
     }
 
     public function render()
@@ -116,6 +142,9 @@ class FormSoap extends Component
             'daftarPemeriksaanLab' => PemeriksaanLab::where('aktif', true)->orderBy('nama')->get(),
             'orderLab' => $this->kunjungan->orderLab()
                 ->with('detail.pemeriksaan', 'detail.hasil.parameter')->get(),
+            'daftarPemeriksaanRadiologi' => PemeriksaanRadiologi::where('aktif', true)->orderBy('nama')->get(),
+            'orderRadiologi' => $this->kunjungan->orderRadiologi()
+                ->with('detail.pemeriksaan', 'detail.ekspertise')->get(),
             'riwayat' => $this->kunjungan->pasien->kunjungan()
                 ->where('id', '!=', $this->kunjungan->id)
                 ->with('pemeriksaan', 'diagnosa.icd10')

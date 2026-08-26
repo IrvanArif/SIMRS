@@ -20,10 +20,14 @@ use App\Livewire\Lab\LayarEntriHasil;
 use App\Livewire\Lab\LayarSampel;
 use App\Livewire\Lab\LayarValidasi;
 use App\Livewire\Master\DaftarDokter;
+use App\Livewire\Master\DaftarPemeriksaanRadiologi;
 use App\Livewire\Master\DaftarPoli;
 use App\Livewire\Master\DaftarTarif;
 use App\Livewire\Master\DaftarTindakan;
 use App\Livewire\Poli\AntrianPoli;
+use App\Livewire\Radiologi\AntreanOrder as AntreanOrderRadiologi;
+use App\Livewire\Radiologi\LayarEkspertise;
+use App\Livewire\Radiologi\LayarPelaksanaan;
 use App\Livewire\Poli\FormResep;
 use App\Livewire\Poli\FormSoap;
 use App\Livewire\Poli\FormVital;
@@ -103,11 +107,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/lab/validasi/{order}', LayarValidasi::class)->name('lab.validasi');
     });
 
+    Route::middleware('role:radiografer')->group(function () {
+        Route::get('/radiologi/antrean', AntreanOrderRadiologi::class)->name('radiologi.antrean');
+        Route::get('/radiologi/kerjakan/{order}', LayarPelaksanaan::class)->name('radiologi.kerjakan');
+    });
+
+    // Ekspertise ditulis dokter, bukan radiografer (aturan 54).
+    Route::middleware('role:dokter')->group(function () {
+        Route::get('/radiologi/ekspertise/{order}', LayarEkspertise::class)->name('radiologi.ekspertise');
+    });
+
     Route::middleware('role:admin')->group(function () {
         Route::get('/master/poli', DaftarPoli::class)->name('master.poli');
         Route::get('/master/dokter', DaftarDokter::class)->name('master.dokter');
         Route::get('/master/tindakan', DaftarTindakan::class)->name('master.tindakan');
         Route::get('/master/tarif', DaftarTarif::class)->name('master.tarif');
+        Route::get('/master/pemeriksaan-radiologi', DaftarPemeriksaanRadiologi::class)
+            ->name('master.pemeriksaan-radiologi');
         Route::get('/admin/user', KelolaUser::class)->name('admin.user');
         Route::get('/admin/audit', PenampilAuditLog::class)->name('admin.audit');
     });

@@ -132,6 +132,62 @@
             @endforelse
         </div>
 
+        <div class="bg-white p-6 rounded shadow space-y-3">
+            <h2 class="font-semibold">Pemeriksaan Radiologi</h2>
+
+            <div class="grid sm:grid-cols-2 gap-2">
+                @foreach ($daftarPemeriksaanRadiologi as $pemeriksaan)
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" wire:model="pemeriksaanRadiologiDipilih" value="{{ $pemeriksaan->id }}">
+                        {{ $pemeriksaan->nama }}
+                    </label>
+                @endforeach
+            </div>
+
+            <div>
+                <label class="block text-sm mb-1">Indikasi klinis</label>
+                <input type="text" wire:model="indikasiRadiologi" class="w-full border rounded px-3 py-2"
+                       placeholder="mis. nyeri perut kanan atas">
+                @error('indikasi_klinis') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                <p class="text-xs text-slate-500 mt-1">
+                    Wajib diisi — pencitraan tanpa indikasi berarti pasien menerima radiasi tanpa alasan yang tercatat.
+                </p>
+            </div>
+
+            <button wire:click="pesanRadiologi" class="bg-slate-800 text-white px-3 py-2 rounded text-sm">
+                Pesan Pencitraan
+            </button>
+
+            @forelse ($orderRadiologi as $order)
+                <div class="border-t pt-3 text-sm">
+                    <p class="font-medium">{{ $order->no_order }} — {{ $order->status->label() }}</p>
+
+                    @if ($order->terbacaDokter())
+                        {{-- Ekspertise hanya ditampilkan setelah ditulis dokter radiologi (aturan 55). --}}
+                        @foreach ($order->detail as $detail)
+                            <p class="mt-2 text-slate-600">{{ $detail->pemeriksaan->nama }}</p>
+                            @if ($detail->ekspertise)
+                                <dl class="mt-1 space-y-1">
+                                    <dt class="text-xs uppercase tracking-wide text-slate-500">Temuan</dt>
+                                    <dd>{{ $detail->ekspertise->temuan }}</dd>
+                                    <dt class="text-xs uppercase tracking-wide text-slate-500">Kesan</dt>
+                                    <dd class="font-medium">{{ $detail->ekspertise->kesan }}</dd>
+                                    @if ($detail->ekspertise->saran)
+                                        <dt class="text-xs uppercase tracking-wide text-slate-500">Saran</dt>
+                                        <dd>{{ $detail->ekspertise->saran }}</dd>
+                                    @endif
+                                </dl>
+                            @endif
+                        @endforeach
+                    @else
+                        <p class="text-slate-500">Ekspertise belum ditulis — menunggu dokter radiologi.</p>
+                    @endif
+                </div>
+            @empty
+                <p class="text-sm text-slate-500 border-t pt-3">Belum ada pemeriksaan radiologi.</p>
+            @endforelse
+        </div>
+
         <div class="flex gap-3">
             <a href="{{ route('poli.resep', $kunjungan) }}" class="bg-slate-200 px-4 py-2 rounded">Tulis Resep</a>
             <button wire:click="selesaikan" class="bg-green-600 text-white px-4 py-2 rounded">
