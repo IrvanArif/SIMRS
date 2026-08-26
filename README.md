@@ -19,6 +19,7 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 - Rencana Fase 3: [`docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md`](docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md)
 - Spesifikasi Fase 4 (Radiologi): [`docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md)
 - Rencana Fase 4: [`docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md`](docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md)
+- Akun pengguna dan layar per peran: [`docs/akun-pengguna.md`](docs/akun-pengguna.md)
 
 ## Cakupan Fase 1
 
