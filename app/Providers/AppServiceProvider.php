@@ -9,6 +9,7 @@ use App\Models\HasilLab;
 use App\Models\Kunjungan;
 use App\Models\OrderLab;
 use App\Models\OrderRadiologi;
+use App\Models\OkupansiBed;
 use App\Models\Pasien;
 use App\Models\RawatInap;
 use App\Models\Pemeriksaan;
@@ -46,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
             Pasien::class, Kunjungan::class, Pemeriksaan::class,
             Diagnosa::class, Tagihan::class, BatchObat::class, OrderLab::class,
             HasilLab::class, OrderRadiologi::class, EkspertiseRadiologi::class,
-            RawatInap::class,
+            RawatInap::class, OkupansiBed::class,
         ];
     }
 }

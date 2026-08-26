@@ -54,6 +54,16 @@ class RawatInap extends Model
         return $this->hasOne(Bed::class);
     }
 
+    public function okupansi(): HasMany
+    {
+        return $this->hasMany(OkupansiBed::class)->orderBy('id');
+    }
+
+    public function bedSekarang(): ?Bed
+    {
+        return $this->okupansi()->berjalan()->first()?->bed;
+    }
+
     public function scopeAktif(Builder $query): Builder
     {
         return $query->where('status', StatusRawatInap::Dirawat->value);
