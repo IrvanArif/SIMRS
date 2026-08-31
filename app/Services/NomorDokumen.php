@@ -19,6 +19,7 @@ class NomorDokumen
         'lab' => 'LB',
         'radiologi' => 'RD',
         'rawat_inap' => 'RI',
+        'sep' => 'SEP',
     ];
 
     public function __construct(private readonly PencatatNomor $pencatat) {}
