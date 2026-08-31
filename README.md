@@ -39,6 +39,7 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 | Laboratorium | Master pemeriksaan berparameter dan nilai rujukan per jenis kelamin, order dokter, pengambilan sampel, entri hasil berpenanda otomatis, validasi sebelum terbaca dokter |
 | Radiologi | Master pemeriksaan lima modalitas beserta instruksi persiapan, order berindikasi klinis wajib, pelaksanaan pencitraan bernomor film oleh radiografer, ekspertise naratif oleh dokter |
 | Rawat inap | Master ruang, kelas, dan bed; perintah rawat inap berindikasi wajib; papan bed; penempatan dan pemindahan berpenggal; catatan perkembangan terintegrasi; pemulangan berdiagnosa akhir; biaya kamar per penggal |
+| Navigasi | Menu per peran disusun dari satu daftar, dengan test yang membuktikan tiap tautan benar-benar bisa dibuka pemiliknya |
 | Display antrian | Halaman publik tanpa login untuk layar ruang tunggu |
 
 Fase berikutnya: klaim & pelaporan (BPJS, INA-CBG, SATUSEHAT) → inventori, SDM,

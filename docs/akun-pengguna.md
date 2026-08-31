@@ -1,8 +1,9 @@
 # Akun Pengguna SIMRS
 
 Daftar akun yang dibuat `PenggunaSeeder` beserta layar yang bisa dibuka
-masing-masing. Karena aplikasi ini **belum punya menu navigasi**, alamat layarnya
-dicantumkan lengkap — untuk sekarang itulah cara mencapainya.
+masing-masing. Sesudah masuk, menu per peran sudah tersedia di beranda dan di
+bilah navigasi; alamat di bawah dicantumkan sebagai rujukan, bukan karena itu
+satu-satunya cara mencapainya.
 
 > **Semua akun di bawah adalah akun demo berisi data dummy.** Kata sandinya
 > seragam dan tertulis terang di berkas ini. Jangan pakai satu pun di lingkungan
@@ -159,6 +160,20 @@ php artisan db:seed --class=PenggunaSeeder   # hanya akunnya
 `PenggunaSeeder` **menolak berjalan di luar lingkungan `local` dan `testing`**.
 Penjagaan itu ada supaya kata sandi seragam ini tidak pernah masuk ke server
 sungguhan lewat perintah seed yang tidak sengaja terpanggil.
+
+## Menu hanya menampilkan yang memang bisa dibuka
+
+Menu disusun dari satu daftar di `app/Support/MenuNavigasi.php`, dan ada test
+yang membuka **setiap tautan yang terlihat** oleh **setiap peran** untuk memastikan
+jawabannya 200. Menu yang menampilkan tautan berujung 403 lebih buruk daripada
+tidak ada menu: pengguna diundang ke pintu yang terkunci.
+
+Kebalikannya juga diuji — yang disembunyikan memang ditolak, bukan sekadar
+disembunyikan.
+
+Satu perkecualian yang perlu diketahui: **dokter radiologi tidak mendapat tautan
+poli maupun papan bed.** Ia berperan `dokter` tetapi tidak memegang poli, jadi
+daftar pasien poli tidak berisi seorang pun yang bisa ia periksa.
 
 ## Hak akses ditegakkan di belakang layar, bukan di menu
 
