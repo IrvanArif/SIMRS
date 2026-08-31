@@ -6,10 +6,12 @@ use App\Enums\JenisDiagnosa;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\PemeriksaanLab;
+use App\Models\KelasKamar;
 use App\Models\PemeriksaanRadiologi;
 use App\Models\Tindakan;
 use App\Services\PemesananLab;
 use App\Services\PemesananRadiologi;
+use App\Services\PerintahRawatInap;
 use App\Services\PemeriksaanKlinis;
 use App\Services\TindakanPelayanan;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -38,6 +40,10 @@ class FormSoap extends Component
     public array $pemeriksaanRadiologiDipilih = [];
 
     public string $indikasiRadiologi = '';
+
+    public ?int $kelas_diminta_id = null;
+
+    public string $indikasiRawatInap = '';
 
     public function mount(Kunjungan $kunjungan): void
     {
@@ -105,6 +111,24 @@ class FormSoap extends Component
         }
     }
 
+    public function perintahkanRawatInap(PerintahRawatInap $layanan): void
+    {
+        $kelas = KelasKamar::find($this->kelas_diminta_id);
+
+        if ($kelas === null) {
+            $this->addError('kelas_diminta_id', 'Pilih kelas kamar yang diminta.');
+
+            return;
+        }
+
+        if ($this->jalankan(fn () => $layanan->terbitkan(
+            $this->kunjungan, auth()->user(), $this->indikasiRawatInap, $kelas
+        ))) {
+            $this->reset('kelas_diminta_id', 'indikasiRawatInap');
+            session()->flash('sukses', 'Perintah rawat inap diterbitkan. Admisi akan menempatkan pasien.');
+        }
+    }
+
     public function selesaikan(PemeriksaanKlinis $layanan): void
     {
         $this->jalankan(fn () => $layanan->selesaikan($this->kunjungan, auth()->user()));
@@ -145,6 +169,8 @@ class FormSoap extends Component
             'daftarPemeriksaanRadiologi' => PemeriksaanRadiologi::where('aktif', true)->orderBy('nama')->get(),
             'orderRadiologi' => $this->kunjungan->orderRadiologi()
                 ->with('detail.pemeriksaan', 'detail.ekspertise')->get(),
+            'daftarKelasKamar' => KelasKamar::where('aktif', true)->orderBy('urutan')->orderBy('nama')->get(),
+            'rawatInap' => $this->kunjungan->rawatInap,
             'riwayat' => $this->kunjungan->pasien->kunjungan()
                 ->where('id', '!=', $this->kunjungan->id)
                 ->with('pemeriksaan', 'diagnosa.icd10')

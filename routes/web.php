@@ -21,6 +21,7 @@ use App\Livewire\Lab\LayarSampel;
 use App\Livewire\Lab\LayarValidasi;
 use App\Livewire\Master\DaftarDokter;
 use App\Livewire\Master\DaftarPemeriksaanRadiologi;
+use App\Livewire\Master\DaftarRuangBed;
 use App\Livewire\Master\DaftarPoli;
 use App\Livewire\Master\DaftarTarif;
 use App\Livewire\Master\DaftarTindakan;
@@ -28,6 +29,10 @@ use App\Livewire\Poli\AntrianPoli;
 use App\Livewire\Radiologi\AntreanOrder as AntreanOrderRadiologi;
 use App\Livewire\Radiologi\LayarEkspertise;
 use App\Livewire\Radiologi\LayarPelaksanaan;
+use App\Livewire\RawatInap\LayarPemulangan;
+use App\Livewire\RawatInap\LayarPenempatan;
+use App\Livewire\RawatInap\LayarPerawatan;
+use App\Livewire\RawatInap\PapanBed;
 use App\Livewire\Poli\FormResep;
 use App\Livewire\Poli\FormSoap;
 use App\Livewire\Poli\FormVital;
@@ -122,6 +127,26 @@ Route::middleware('auth')->group(function () {
         Route::get('/radiologi/ekspertise/{order}', LayarEkspertise::class)->name('radiologi.ekspertise');
     });
 
+    // Papan bed adalah satu-satunya daftar pasien rawat inap, jadi setiap peran
+    // yang punya urusan dengannya harus bisa membukanya — termasuk kasir, yang
+    // perlu menjelaskan rincian kamar pada tagihan.
+    Route::middleware('role:admisi|perawat|dokter|kasir')->group(function () {
+        Route::get('/rawat-inap/papan', PapanBed::class)->name('rawat-inap.papan');
+    });
+
+    Route::middleware('role:admisi')->group(function () {
+        Route::get('/rawat-inap/tempatkan/{rawatInap}', LayarPenempatan::class)->name('rawat-inap.tempatkan');
+    });
+
+    Route::middleware('role:perawat|dokter')->group(function () {
+        Route::get('/rawat-inap/rawat/{rawatInap}', LayarPerawatan::class)->name('rawat-inap.rawat');
+    });
+
+    // Memulangkan berarti menetapkan diagnosa akhir dan cara pulang (aturan 68).
+    Route::middleware('role:dokter')->group(function () {
+        Route::get('/rawat-inap/pulangkan/{rawatInap}', LayarPemulangan::class)->name('rawat-inap.pulangkan');
+    });
+
     Route::middleware('role:admin')->group(function () {
         Route::get('/master/poli', DaftarPoli::class)->name('master.poli');
         Route::get('/master/dokter', DaftarDokter::class)->name('master.dokter');
@@ -129,6 +154,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/master/tarif', DaftarTarif::class)->name('master.tarif');
         Route::get('/master/pemeriksaan-radiologi', DaftarPemeriksaanRadiologi::class)
             ->name('master.pemeriksaan-radiologi');
+        Route::get('/master/ruang-bed', DaftarRuangBed::class)->name('master.ruang-bed');
         Route::get('/admin/user', KelolaUser::class)->name('admin.user');
         Route::get('/admin/audit', PenampilAuditLog::class)->name('admin.audit');
     });

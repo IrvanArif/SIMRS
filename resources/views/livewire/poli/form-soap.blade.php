@@ -188,6 +188,45 @@
             @endforelse
         </div>
 
+        <div class="bg-white p-6 rounded shadow space-y-3">
+            <h2 class="font-semibold">Rawat Inap</h2>
+
+            @if ($rawatInap)
+                <p class="text-sm">
+                    {{ $rawatInap->no_rawat_inap }} — {{ $rawatInap->status->label() }}
+                    ({{ $rawatInap->kelasDiminta->nama }})
+                </p>
+                <p class="text-sm text-slate-600">Indikasi: {{ $rawatInap->indikasi }}</p>
+                @if ($rawatInap->status->aktif())
+                    <p class="text-sm text-amber-700">
+                        Kunjungan ini ditutup lewat pemulangan pasien, bukan tombol Selesaikan di bawah.
+                    </p>
+                @endif
+            @else
+                <div>
+                    <label class="block text-sm mb-1">Kelas kamar yang diminta</label>
+                    <select wire:model="kelas_diminta_id" class="w-full border rounded px-3 py-2">
+                        <option value="">— pilih kelas —</option>
+                        @foreach ($daftarKelasKamar as $kelas)
+                            <option value="{{ $kelas->id }}">{{ $kelas->nama }}</option>
+                        @endforeach
+                    </select>
+                    @error('kelas_diminta_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm mb-1">Indikasi rawat inap</label>
+                    <input type="text" wire:model="indikasiRawatInap" class="w-full border rounded px-3 py-2"
+                           placeholder="mis. dehidrasi sedang">
+                    @error('indikasi') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <button wire:click="perintahkanRawatInap" class="bg-slate-800 text-white px-3 py-2 rounded text-sm">
+                    Perintahkan Rawat Inap
+                </button>
+            @endif
+        </div>
+
         <div class="flex gap-3">
             <a href="{{ route('poli.resep', $kunjungan) }}" class="bg-slate-200 px-4 py-2 rounded">Tulis Resep</a>
             <button wire:click="selesaikan" class="bg-green-600 text-white px-4 py-2 rounded">
