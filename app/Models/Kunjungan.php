@@ -104,6 +104,11 @@ class Kunjungan extends Model
         return $this->sep()->berlaku()->first();
     }
 
+    public function berkasKlaim(): HasMany
+    {
+        return $this->hasMany(BerkasKlaim::class);
+    }
+
     /**
      * Kunjungan disebut rawat inap bila punya masa rawat yang masih berjalan.
      * Tidak ada kolom penanda terpisah — satu sumber kebenaran, tidak ada dua
