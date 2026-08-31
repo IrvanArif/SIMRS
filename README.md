@@ -2,9 +2,10 @@
 
 Aplikasi Laravel untuk RS Sampel. Dikembangkan bertahap;
 **Fase 1 (Fondasi + Rawat Jalan)**, **Fase 2 (Farmasi)**, **Fase 3 (Laboratorium)**,
-dan **Fase 4 (Radiologi)** sudah selesai, mencakup satu alur utuh dari pasien
-mendaftar, diperiksa, menunggu hasil laboratorium dan pencitraan, menerima obat,
-sampai tagihannya diselesaikan kasir.
+**Fase 4 (Radiologi)**, dan **Fase 5 (Rawat Inap)** sudah selesai, mencakup satu
+alur utuh dari pasien mendaftar, diperiksa, menunggu hasil laboratorium dan
+pencitraan, menginap bila perlu, menerima obat, sampai tagihannya diselesaikan
+kasir.
 
 Tahap ini memakai **data dummy**. Belum ada migrasi data pasien nyata dan belum ada
 integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase berikutnya.
@@ -19,6 +20,8 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 - Rencana Fase 3: [`docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md`](docs/superpowers/plans/2026-08-18-simrs-fase3-laboratorium.md)
 - Spesifikasi Fase 4 (Radiologi): [`docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase4-radiologi-design.md)
 - Rencana Fase 4: [`docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md`](docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md)
+- Spesifikasi Fase 5 (Rawat Inap): [`docs/superpowers/specs/2026-08-18-simrs-fase5-rawat-inap-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase5-rawat-inap-design.md)
+- Rencana Fase 5: [`docs/superpowers/plans/2026-08-18-simrs-fase5-rawat-inap.md`](docs/superpowers/plans/2026-08-18-simrs-fase5-rawat-inap.md)
 - Akun pengguna dan layar per peran: [`docs/akun-pengguna.md`](docs/akun-pengguna.md)
 
 ## Cakupan Fase 1
@@ -35,10 +38,11 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 | Farmasi | Stok per batch dengan kedaluwarsa, penyiapan resep beralokasi FEFO, penyerahan obat, kartu stok, penyesuaian opname |
 | Laboratorium | Master pemeriksaan berparameter dan nilai rujukan per jenis kelamin, order dokter, pengambilan sampel, entri hasil berpenanda otomatis, validasi sebelum terbaca dokter |
 | Radiologi | Master pemeriksaan lima modalitas beserta instruksi persiapan, order berindikasi klinis wajib, pelaksanaan pencitraan bernomor film oleh radiografer, ekspertise naratif oleh dokter |
+| Rawat inap | Master ruang, kelas, dan bed; perintah rawat inap berindikasi wajib; papan bed; penempatan dan pemindahan berpenggal; catatan perkembangan terintegrasi; pemulangan berdiagnosa akhir; biaya kamar per penggal |
 | Display antrian | Halaman publik tanpa login untuk layar ruang tunggu |
 
-Fase berikutnya: rawat inap → klaim & pelaporan (BPJS, INA-CBG, SATUSEHAT)
-→ inventori, SDM, akuntansi.
+Fase berikutnya: klaim & pelaporan (BPJS, INA-CBG, SATUSEHAT) → inventori, SDM,
+akuntansi.
 
 ## Alur laboratorium
 
@@ -59,6 +63,49 @@ Rujukan dibedakan menurut jenis kelamin karena rentang normalnya memang
 berbeda: hemoglobin 16 g/dL normal bagi laki-laki tetapi tinggi bagi
 perempuan. Parameter tanpa rujukan yang cocok tidak ditebak — nilainya
 tersimpan tanpa penanda dan kejadiannya dicatat agar masternya dilengkapi.
+
+## Alur rawat inap
+
+**Rawat inap bukan kunjungan baru — ia menempel pada kunjungan yang sudah ada.**
+Pasien mendaftar di poli seperti biasa, dokter memeriksa, lalu memerintahkan
+rawat inap. Kunjungan itu tidak ditutup; ia tetap terbuka sampai pasien pulang.
+
+Keputusan itu membuat tindakan, resep, laboratorium, dan radiologi langsung
+bekerja untuk pasien rawat inap tanpa satu baris perubahan pun, karena semuanya
+memang sudah bergantung pada kunjungan. Satu masa rawat pun menghasilkan satu
+tagihan yang memuat kamar sekaligus seluruh layanannya.
+
+```
+Dokter memerintahkan   indikasi rawat wajib; kelas yang diminta dicatat
+Admisi menempatkan     bed dikunci; kunjungan menjadi "dalam perawatan"
+Perawat & dokter       catatan perkembangan SOAP, sebanyak yang diperlukan
+Pindah bed bila perlu  penggal lama ditutup, penggal baru dibuka
+Dokter memulangkan     diagnosa akhir dan cara pulang wajib; bed dilepas
+Kasir menyelesaikan    tagihan memuat kamar, tindakan, obat, lab, radiologi
+```
+
+**Satu bed satu pasien, dijamin basis data.** Kolom `bed.rawat_inap_id` bersifat
+unik, jadi dua pasien mustahil menempati satu bed sekalipun dua petugas menekan
+tombol pada milidetik yang sama. Penguncian baris melindungi dari balapan;
+batasan uniklah yang menolak jalur tulis yang belum terbayang.
+
+**Okupansi disimpan berpenggal, bukan sebagai satu penunjuk.** Alasannya bukan
+kerapian melainkan ketepatan tagihan: pasien yang pindah dari VIP ke Kelas 2 di
+hari ketiga harus ditagih dua tarif berbeda. Penggal berupa selang setengah
+terbuka `[mulai, selesai)`, sehingga jumlah hari seluruh penggal persis sama
+dengan lama rawatnya — tanpa itu, satu hari hilang tanpa jejak setiap kali
+pasien berpindah kamar.
+
+Lama rawat dihitung dari selisih tanggal kalender, minimal satu hari: kamar yang
+dipakai setengah hari tetap tidak bisa dijual ke orang lain hari itu.
+
+**Aturan apotek dilonggarkan khusus untuk pasien rawat inap.** Aturan 30 menahan
+obat sampai tagihan lunas — benar untuk pasien yang akan berjalan keluar pintu,
+tetapi mustahil dipenuhi pasien yang tagihannya baru terbit saat ia pulang.
+Obatnya diserahkan selama dirawat, dan biayanya dipungut saat tagihan disusun.
+
+Biaya sementara bisa dibaca kapan saja selama pasien dirawat, dihitung dari
+sumber yang sama dengan tagihan akhir supaya keduanya tidak bisa berselisih.
 
 ## Alur radiologi
 
@@ -200,6 +247,7 @@ Aturan yang punya konsekuensi tinggal di `app/Services`:
 - `PenyiapanResep`, `PenyerahanObat`, `PenyesuaianStok` — alokasi FEFO, penyerahan obat, koreksi opname.
 - `PemesananLab`, `PemeriksaanLaboratorium`, `PenandaNilai` — order lab, alur sampel sampai validasi, penandaan nilai abnormal.
 - `PemesananRadiologi`, `PelaksanaanRadiologi`, `PenulisanEkspertise` — order radiologi, pelaksanaan pencitraan, penulisan dan koreksi ekspertise.
+- `PerintahRawatInap`, `PenempatanBed`, `CatatanHarian`, `PemulanganPasien`, `PenghitungBiayaKamar` — perintah rawat inap, okupansi bed berpenggal, catatan perkembangan, pemulangan, dan biaya kamar.
 
 Sejak Fase 3, seluruh harga tinggal di satu tabel `tarif` berkolom jenis layanan,
 dan `tagihan_detail` menyimpan sumbernya secara polimorfik. Dengan begitu rincian

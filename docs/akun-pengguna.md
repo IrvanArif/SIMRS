@@ -45,6 +45,8 @@ memegang poli rawat jalan, dan yang menentukan kewenangannya adalah perannya.
 | Buat kunjungan | `/pendaftaran/kunjungan/{id_pasien}` |
 | Papan antrian | `/pendaftaran/antrian` |
 | Cetak karcis | `/cetak/karcis/{id_antrian}` |
+| Papan bed rawat inap | `/rawat-inap/papan` |
+| Tempatkan pasien di bed | `/rawat-inap/tempatkan/{id_rawat_inap}` |
 
 ### Perawat — `perawat@rs.test`
 
@@ -52,6 +54,8 @@ memegang poli rawat jalan, dan yang menentukan kewenangannya adalah perannya.
 |---|---|
 | Antrian poli | `/poli/antrian` |
 | Tanda vital | `/poli/vital/{id_kunjungan}` |
+| Papan bed rawat inap | `/rawat-inap/papan` |
+| Perawatan pasien rawat inap | `/rawat-inap/rawat/{id_rawat_inap}` |
 
 ### Dokter — `dokter@rs.test`
 
@@ -111,6 +115,10 @@ pencitraan adalah tindakan medis, bukan tugas petugas yang mengoperasikan alat.
 | Daftar tagihan | `/kasir/tagihan` |
 | Proses pembayaran | `/kasir/bayar/{id_tagihan}` |
 | Cetak kuitansi | `/cetak/kuitansi/{id_pembayaran}` |
+| Papan bed rawat inap | `/rawat-inap/papan` |
+
+Kasir bisa membuka papan bed karena ia harus bisa menjelaskan rincian kamar pada
+tagihan, tanpa berwenang mengubah apa pun di sana.
 
 ### Rekam medis — `rekammedis@rs.test`
 
@@ -119,6 +127,7 @@ pencitraan adalah tindakan medis, bukan tugas petugas yang mengoperasikan alat.
 | Penelusuran rekam medis | `/rekam-medis/telusur` |
 | Koreksi data pasien | `/rekam-medis/koreksi/{id_pasien}` |
 | Rekap kunjungan harian | `/rekam-medis/rekap` |
+| Papan bed rawat inap | `/rawat-inap/papan` |
 
 ### Admin — `admin@rs.test`
 
@@ -129,6 +138,7 @@ pencitraan adalah tindakan medis, bukan tugas petugas yang mengoperasikan alat.
 | Master tindakan | `/master/tindakan` |
 | Master tarif | `/master/tarif` |
 | Master pemeriksaan radiologi | `/master/pemeriksaan-radiologi` |
+| Master ruang dan bed | `/master/ruang-bed` |
 | Kelola pengguna | `/admin/user` |
 | Audit log | `/admin/audit` |
 

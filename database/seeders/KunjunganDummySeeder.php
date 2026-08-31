@@ -2,14 +2,18 @@
 
 namespace Database\Seeders;
 
+use App\Enums\CaraPulang;
 use App\Enums\JenisDiagnosa;
 use App\Enums\MetodePembayaran;
+use App\Enums\StatusKunjungan;
 use App\Enums\Peran;
 use App\Models\Dokter;
 use App\Models\Icd10;
 use App\Models\Kunjungan;
 use App\Models\Obat;
 use App\Models\PemeriksaanLab;
+use App\Models\KelasKamar;
+use App\Models\Bed;
 use App\Models\PemeriksaanRadiologi;
 use App\Models\Pasien;
 use App\Models\Penjamin;
@@ -17,10 +21,14 @@ use App\Models\Tindakan;
 use App\Models\User;
 use App\Services\PemeriksaanKlinis;
 use App\Services\PemeriksaanLaboratorium;
+use App\Services\CatatanHarian;
 use App\Services\PelaksanaanRadiologi;
 use App\Services\PemesananLab;
 use App\Services\PemesananRadiologi;
 use App\Services\PendaftaranKunjungan;
+use App\Services\PemulanganPasien;
+use App\Services\PenempatanBed;
+use App\Services\PerintahRawatInap;
 use App\Services\PenulisanEkspertise;
 use App\Services\PenulisanResep;
 use App\Services\PenyerahanObat;
@@ -52,7 +60,10 @@ class KunjunganDummySeeder extends Seeder
 
         $admisi = User::role(Peran::Admisi->value)->first();
         $perawat = User::role(Peran::Perawat->value)->first();
-        $dokterUser = User::role(Peran::Dokter->value)->first();
+        // Harus dokter yang memegang poli. Sejak dokter radiologi ikut diseed,
+        // pengguna berperan dokter yang pertama bisa jadi dia — dan dia tidak
+        // punya poli, sehingga seluruh SOAP dummy akan salah atas nama.
+        $dokterUser = User::role(Peran::Dokter->value)->whereNotNull('dokter_id')->first();
         $kasir = User::role(Peran::Kasir->value)->first();
         $apoteker = User::role(Peran::Apoteker->value)->first();
         $analis = User::role(Peran::Analis->value)->first();
@@ -279,6 +290,10 @@ class KunjunganDummySeeder extends Seeder
             }
         }
 
+        [$dirawat, $sudahPulang] = $this->isiRawatInap(
+            $dokter, $penjamin, $konsultasi, $icd, $admisi, $perawat, $dokterUser
+        );
+
         $menungguApotek = \App\Models\Resep::where('status', \App\Enums\StatusResep::Dibuat)->count();
         $belumLunas = \App\Models\Tagihan::where('status', \App\Enums\StatusTagihan::BelumBayar)->count();
 
@@ -286,7 +301,146 @@ class KunjunganDummySeeder extends Seeder
             "Kunjungan dummy: {$selesai} selesai, {$orderLab} order lab, {$orderRadiologi} order radiologi, "
             ."{$disiapkan} resep disiapkan, {$diserahkan} obat diserahkan, {$dibayar} dibayar, "
             ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir, "
-            ."{$antreLab} order lab dan {$antreRadiologi} order radiologi masih mengantre."
+            ."{$antreLab} order lab dan {$antreRadiologi} order radiologi masih mengantre, "
+            ."{$dirawat} pasien sedang dirawat inap dan {$sudahPulang} sudah pulang."
         );
+    }
+
+    /**
+     * Mengisi bangsal: sebagian pasien masih dirawat supaya papan bed ada isinya,
+     * sebagian sudah pulang lengkap dengan tagihan berisi baris kamar. Satu di
+     * antaranya sengaja pindah kelas, supaya perhitungan berpenggal terlihat
+     * nyata saat sistem didemokan.
+     *
+     * @return array{0: int, 1: int} jumlah yang sedang dirawat dan yang sudah pulang
+     */
+    private function isiRawatInap(
+        $dokter, $penjamin, $konsultasi, $icd, $admisi, $perawat, $dokterUser
+    ): array {
+        $kelas = KelasKamar::orderBy('urutan')->get();
+
+        if ($kelas->isEmpty() || Bed::count() === 0) {
+            return [0, 0];
+        }
+
+        $pendaftaran = app(PendaftaranKunjungan::class);
+        $klinis = app(PemeriksaanKlinis::class);
+        $pelayanan = app(TindakanPelayanan::class);
+        $perintah = app(PerintahRawatInap::class);
+        $penempatan = app(PenempatanBed::class);
+        $catatan = app(CatatanHarian::class);
+        $pemulangan = app(PemulanganPasien::class);
+
+        // Pasien yang masih punya kunjungan berjalan tidak boleh didaftarkan lagi
+        // hari ini (aturan 5). Kandidatnya disaring lebih dulu ketimbang diambil
+        // acak lalu ditolak di tengah jalan.
+        $kandidat = Pasien::whereDoesntHave('kunjungan', fn ($q) => $q->whereNotIn('status', [
+            StatusKunjungan::Selesai->value, StatusKunjungan::Batal->value,
+        ]))->inRandomOrder()->limit(9)->get();
+
+        $dirawat = 0;
+        $pulang = 0;
+
+        // 9 masa rawat: 6 masih berjalan, 3 sudah pulang (satu di antaranya pindah kelas).
+        foreach (range(0, 8) as $urutan) {
+            $bedKosong = Bed::kosong()->inRandomOrder()->first();
+            $orang = $kandidat->get($urutan);
+
+            if ($bedKosong === null || $orang === null) {
+                break;
+            }
+
+            // Sebagian sengaja ditaruh di poli dokter demo, supaya akun
+            // dokter@rs.test benar-benar punya pasien rawat inap sendiri saat
+            // sistem dibuka — bukan hanya milik dokter lain yang tak bisa ia buka.
+            $dokterTerpilih = $urutan % 3 === 0 && $dokterUser->dokter !== null
+                ? $dokterUser->dokter
+                : $dokter->random();
+            $pakaiBpjs = $urutan % 2 === 0;
+
+            $kunjungan = $pendaftaran->daftarkan([
+                'pasien_id' => $orang->id,
+                'poli_id' => $dokterTerpilih->poli_id,
+                'dokter_id' => $dokterTerpilih->id,
+                'penjamin_id' => $pakaiBpjs ? $penjamin['BPJS'] : $penjamin['UMUM'],
+                'no_kartu_penjamin' => $pakaiBpjs ? fake()->numerify('#############') : null,
+                'tanggal' => now()->toDateString(),
+            ], $admisi);
+
+            $klinis->catatVital($kunjungan, [
+                'sistolik' => rand(95, 140), 'diastolik' => rand(55, 90), 'nadi' => rand(70, 110),
+                'suhu' => rand(370, 395) / 10, 'respirasi' => rand(16, 26),
+                'berat_badan' => rand(400, 900) / 10, 'tinggi_badan' => rand(145, 180),
+                'keluhan_awal' => 'Keluhan berat sehingga dirujuk untuk rawat inap.',
+            ], $perawat);
+
+            $klinis->catatSoap($kunjungan, [
+                'subjective' => 'Keluhan menetap dan memberat sejak beberapa hari.',
+                'objective' => 'Tanda vital menunjukkan perlunya pemantauan berkelanjutan.',
+                'assessment' => 'Diagnosa kerja sesuai kode ICD-10 terlampir.',
+                'plan' => 'Rawat inap untuk observasi dan terapi.',
+            ], $dokterUser);
+
+            $klinis->tambahDiagnosa($kunjungan, $icd->random()->id, JenisDiagnosa::Primer);
+            $pelayanan->tambah($kunjungan, $konsultasi->random()->id, 1, $dokterUser);
+
+            $rawatInap = $perintah->terbitkan(
+                $kunjungan->refresh(), $dokterUser, 'Perlu pemantauan berkelanjutan.', $kelas->random()
+            );
+
+            // Dua pasien pertama sengaja dibiarkan menunggu penempatan, supaya
+            // daftar "Menunggu Penempatan" di papan bed tidak kosong.
+            if ($urutan < 2) {
+                $dirawat++;
+
+                continue;
+            }
+
+            $penempatan->tempatkan($rawatInap, $bedKosong, $admisi);
+
+            // Tanggal masuk dimundurkan supaya lama rawatnya lebih dari sehari.
+            // Cara ini dipilih ketimbang menggeser jam sistem, yang berisiko
+            // merembet ke seluruh proses seed.
+            $lama = rand(2, 6);
+            $mulai = now()->subDays($lama)->toDateString();
+            $rawatInap->okupansi()->berjalan()->update(['mulai' => $mulai]);
+            $rawatInap->update(['waktu_masuk' => now()->subDays($lama)]);
+
+            foreach (range(1, min($lama, 3)) as $hari) {
+                $catatan->tulis($rawatInap->refresh(), [
+                    'subjective' => "Hari perawatan ke-{$hari}: keluhan berangsur berkurang.",
+                    'objective' => 'Tanda vital membaik, asupan cairan tercukupi.',
+                    'assessment' => 'Perbaikan klinis.',
+                    'plan' => 'Lanjutkan terapi, evaluasi besok.',
+                ], $hari % 2 === 0 ? $dokterUser : $perawat);
+            }
+
+            // Satu pasien pindah kelas di tengah masa rawat.
+            if ($urutan === 6) {
+                $tujuan = Bed::kosong()
+                    ->where('kelas_kamar_id', '!=', $bedKosong->kelas_kamar_id)
+                    ->inRandomOrder()->first();
+
+                if ($tujuan !== null) {
+                    $penempatan->pindahkan(
+                        $rawatInap->refresh(), $tujuan, $admisi, 'Permintaan keluarga, naik kelas.'
+                    );
+                }
+            }
+
+            if ($urutan >= 6) {
+                $pemulangan->pulangkan(
+                    $rawatInap->refresh(), $dokterUser, $icd->random()->id, CaraPulang::Sembuh,
+                    'Kondisi membaik, dilanjutkan kontrol rawat jalan.'
+                );
+                $pulang++;
+
+                continue;
+            }
+
+            $dirawat++;
+        }
+
+        return [$dirawat, $pulang];
     }
 }

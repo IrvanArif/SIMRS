@@ -130,7 +130,7 @@ Route::middleware('auth')->group(function () {
     // Papan bed adalah satu-satunya daftar pasien rawat inap, jadi setiap peran
     // yang punya urusan dengannya harus bisa membukanya — termasuk kasir, yang
     // perlu menjelaskan rincian kamar pada tagihan.
-    Route::middleware('role:admisi|perawat|dokter|kasir')->group(function () {
+    Route::middleware('role:admisi|perawat|dokter|kasir|rekam_medis')->group(function () {
         Route::get('/rawat-inap/papan', PapanBed::class)->name('rawat-inap.papan');
     });
 

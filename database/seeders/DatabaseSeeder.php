@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             FarmasiSeeder::class,
             LaboratoriumSeeder::class,
             RadiologiSeeder::class,
+            RawatInapSeeder::class,
             PasienDummySeeder::class,
             KunjunganDummySeeder::class,
         ]);

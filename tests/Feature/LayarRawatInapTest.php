@@ -292,6 +292,22 @@ class LayarRawatInapTest extends TestCase
         $this->assertTrue($kunjungan->refresh()->sedangDirawatInap());
     }
 
+    public function test_layar_soap_menampilkan_masa_rawat_yang_sudah_berjalan(): void
+    {
+        $rawatInap = $this->pasienDiBed();
+        $kunjungan = $rawatInap->kunjungan;
+        $dokter = $this->penggunaBerperan(Peran::Dokter->value, ['dokter_id' => $kunjungan->dokter_id]);
+
+        Livewire::actingAs($dokter)
+            ->test(FormSoap::class, ['kunjungan' => $kunjungan->refresh()])
+            ->assertSee($rawatInap->no_rawat_inap)
+            ->assertSee('Dehidrasi sedang')
+            // Dokter perlu diberi tahu bahwa tombol Selesaikan bukan penutupnya,
+            // supaya ia tidak menekannya lalu bingung ditolak.
+            ->assertSee('ditutup lewat pemulangan pasien')
+            ->assertDontSee('Perintahkan Rawat Inap');
+    }
+
     public function test_perintah_rawat_inap_tanpa_indikasi_menampilkan_pesan_di_layar(): void
     {
         $kunjungan = $this->kunjunganSiap();
@@ -337,10 +353,21 @@ class LayarRawatInapTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admisi_bisa_membuka_papan_bed(): void
+    public function test_papan_bed_terbuka_untuk_peran_yang_berurusan_dengannya(): void
     {
-        $this->actingAs($this->penggunaBerperan(Peran::Admisi->value))
-            ->get(route('rawat-inap.papan'))
-            ->assertOk();
+        // Daftar peran di rute harus sejalan dengan RawatInapPolicy::lihat();
+        // kalau berselisih, ada peran yang boleh melihat menurut policy tetapi
+        // ditolak middleware sebelum policy sempat ditanya.
+        foreach ([Peran::Admisi, Peran::Perawat, Peran::Dokter, Peran::Kasir, Peran::RekamMedis] as $peran) {
+            $this->actingAs($this->penggunaBerperan($peran->value))
+                ->get(route('rawat-inap.papan'))
+                ->assertOk();
+        }
+
+        foreach ([Peran::Apoteker, Peran::Analis, Peran::Radiografer] as $peran) {
+            $this->actingAs($this->penggunaBerperan($peran->value))
+                ->get(route('rawat-inap.papan'))
+                ->assertForbidden();
+        }
     }
 }
