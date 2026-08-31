@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Tindakan extends Model
 {
@@ -18,4 +19,13 @@ class Tindakan extends Model
         return ['aktif' => 'boolean'];
     }
 
+
+    /**
+     * Padanan kode prosedur untuk klaim. Boleh kosong: tidak semua tindakan
+     * punya padanan ICD-9-CM.
+     */
+    public function icd9(): BelongsTo
+    {
+        return $this->belongsTo(Icd9::class);
+    }
 }

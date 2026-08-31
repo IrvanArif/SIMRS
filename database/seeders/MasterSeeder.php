@@ -6,6 +6,7 @@ use App\Models\Dokter;
 use App\Models\JadwalDokter;
 use App\Models\Obat;
 use App\Models\Penjamin;
+use App\Models\Icd9;
 use App\Models\Poli;
 use App\Enums\JenisLayanan;
 use App\Models\Tarif;
@@ -24,6 +25,20 @@ class MasterSeeder extends Seeder
     }
 
     /** @return array<string, Poli> */
+    /**
+     * kode tindakan => kode ICD-9-CM. Konsultasi dan administrasi sengaja tidak
+     * dipetakan: keduanya bukan prosedur.
+     */
+    private const PEMETAAN_ICD9 = [
+        'TIN001' => '99.15', 'TIN002' => '99.29', 'TIN003' => '38.93', 'TIN004' => '93.94',
+        'TIN005' => '86.59', 'TIN006' => '86.59', 'TIN008' => '86.28', 'TIN009' => '86.22',
+        'TIN010' => '86.23', 'TIN011' => '23.09', 'TIN012' => '23.09', 'TIN013' => '23.2',
+        'TIN014' => '23.2', 'TIN015' => '96.54', 'TIN016' => '89.52', 'TIN019' => '99.39',
+        'TIN020' => '75.36', 'TIN021' => '88.78', 'TIN022' => '91.46', 'TIN023' => '69.7',
+        'TIN024' => '97.71', 'TIN026' => '96.52', 'TIN027' => '98.11', 'TIN028' => '86.04',
+        'TIN029' => '64.0', 'TIN030' => '95.09',
+    ];
+
     private function poli(): array
     {
         $daftar = [
@@ -139,9 +154,17 @@ class MasterSeeder extends Seeder
             ['TIN030', 'Pemeriksaan Visus Mata', 'tindakan_medis', 40000],
         ];
 
+        $icd9 = $this->icd9();
+
         foreach ($daftar as [$kode, $nama, $kategori, $tarifUmum]) {
+            $kodeIcd9 = self::PEMETAAN_ICD9[$kode] ?? null;
+
             $tindakan = Tindakan::updateOrCreate(['kode' => $kode], [
                 'nama' => $nama, 'kategori' => $kategori, 'aktif' => true,
+                // Sebagian tindakan sengaja tidak dipetakan — konsultasi dan
+                // administrasi memang tidak punya padanan prosedur. Itu keadaan
+                // nyata, dan klaim harus tetap tersusun tanpanya (aturan 88).
+                'icd9_id' => $kodeIcd9 === null ? null : $icd9[$kodeIcd9]->id,
             ]);
 
             // Tarif BPJS dibuat sekitar 70% tarif umum, dibulatkan ke ribuan terdekat.
@@ -156,6 +179,50 @@ class MasterSeeder extends Seeder
                 ], ['harga' => $tarif]);
             }
         }
+    }
+
+    /**
+     * Kode prosedur ICD-9-CM yang lazim dipakai di rawat jalan dan rawat inap
+     * rumah sakit tipe C.
+     *
+     * @return array<string, \App\Models\Icd9> berkunci kode
+     */
+    private function icd9(): array
+    {
+        $daftar = [
+            ['99.11', 'Injeksi imunoglobulin'],
+            ['99.15', 'Injeksi obat intramuskular'],
+            ['99.29', 'Injeksi obat intravena'],
+            ['38.93', 'Kateterisasi vena, pemasangan infus'],
+            ['93.94', 'Terapi inhalasi nebulisasi'],
+            ['86.59', 'Penjahitan luka kulit'],
+            ['86.28', 'Debridemen luka non-eksisi'],
+            ['86.22', 'Debridemen luka eksisi'],
+            ['86.23', 'Pengangkatan kuku'],
+            ['23.09', 'Ekstraksi gigi'],
+            ['23.2', 'Restorasi gigi dengan tambalan'],
+            ['96.54', 'Pembersihan karang gigi'],
+            ['89.52', 'Elektrokardiogram'],
+            ['99.39', 'Imunisasi terhadap penyakit lain'],
+            ['75.36', 'Pemeriksaan kehamilan'],
+            ['88.78', 'Ultrasonografi kandungan'],
+            ['91.46', 'Pemeriksaan sitologi serviks'],
+            ['69.7', 'Pemasangan alat kontrasepsi dalam rahim'],
+            ['97.71', 'Pelepasan alat kontrasepsi dalam rahim'],
+            ['96.52', 'Irigasi telinga'],
+            ['98.11', 'Pengangkatan benda asing dari telinga'],
+            ['86.04', 'Insisi dan drainase abses kulit'],
+            ['64.0', 'Sirkumsisi'],
+            ['95.09', 'Pemeriksaan ketajaman penglihatan'],
+        ];
+
+        $hasil = [];
+
+        foreach ($daftar as [$kode, $nama]) {
+            $hasil[$kode] = Icd9::updateOrCreate(['kode' => $kode], ['nama' => $nama]);
+        }
+
+        return $hasil;
     }
 
     private function obat(): void
