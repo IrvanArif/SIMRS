@@ -396,7 +396,8 @@ test_lama_rawat_sehari_saat_masuk_dan_pulang_di_tanggal_sama
 test_lama_rawat_tiga_hari_dihitung_dari_selisih_tanggal
 test_tarif_kamar_dihitung_per_penggal_menurut_kelasnya
 test_pindah_kelas_menghasilkan_dua_baris_tarif_berbeda
-test_hari_peralihan_menjadi_milik_penggal_yang_ditinggalkan
+test_hari_peralihan_menjadi_milik_penggal_yang_baru
+test_jumlah_hari_seluruh_penggal_sama_dengan_lama_rawat
 test_tiap_penggal_minimal_satu_hari
 test_perubahan_master_tarif_tidak_mengubah_masa_rawat_berjalan
 test_tagihan_rawat_inap_memuat_kamar_tindakan_obat_lab_dan_radiologi
@@ -521,3 +522,5 @@ seluruh suite → perbarui README dan dokumen akun → commit dan dorong.
 | 73 Tagihan memuat kamar dan seluruh layanan | Task 6 |
 | 74 Kunjungan rawat inap tidak ditutup lewat alur poli | Task 5 |
 | 75 Rincian sementara tanpa membuat tagihan | Task 6 |
+| 76 Obat rawat inap tidak menunggu pelunasan | Task 6 |
+| 77 Rincian sementara dan tagihan akhir sesumber | Task 6 |

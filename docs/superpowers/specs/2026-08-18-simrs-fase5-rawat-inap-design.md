@@ -92,10 +92,17 @@ kamar itu, dan kamar itu tidak bisa dijual ke orang lain hari itu.
 hari = maksimum(1, tanggal_pulang − tanggal_masuk)
 ```
 
-Bila pasien pindah bed, tiap penggal dihitung sendiri dengan tarif kelasnya, dan
-hari peralihan menjadi milik penggal yang **ditinggalkan** — kamar lama sudah
-terpakai hari itu, kamar baru baru terpakai keesokan harinya. Tiap penggal
-minimal satu hari.
+Bila pasien pindah bed, tiap penggal dihitung sendiri dengan tarif kelasnya.
+Penggal disimpan sebagai selang **setengah terbuka** `[mulai, selesai)`: hari
+peralihan menjadi milik penggal yang **baru**, karena kamar itulah yang
+ditempati pada malam hari itu. Tiap penggal minimal satu hari.
+
+> **Koreksi atas rancangan awal.** Mula-mula hari peralihan hendak diberikan
+> kepada penggal yang ditinggalkan. Itu keliru: dengan cara tersebut, masa rawat
+> 1–6 Januari yang berpindah kamar pada 4 Januari menghasilkan 3 + 1 = 4 hari,
+> padahal lama rawatnya 5 hari. Satu hari hilang tanpa jejak, dan pasien ditagih
+> kurang tanpa ada yang tahu. Selang setengah terbuka menghasilkan 3 + 2 = 5,
+> tepat sama dengan lama rawatnya.
 
 Tarif kamar memakai tabel `tarif` yang sudah ada dengan `jenis_layanan`
 `kamar` dan `layanan_id` menunjuk kelasnya. Tidak ada tabel harga baru.
@@ -141,10 +148,12 @@ Melanjutkan penomoran spec Fase 4. Setiap aturan wajib punya test yang membuktik
 69. Pasien tidak bisa dipulangkan selama masih ada order laboratorium atau radiologi yang belum selesai.
 70. Pemulangan melepaskan bed sehingga bisa ditempati pasien berikutnya.
 71. Lama rawat dihitung dari selisih tanggal kalender, minimal satu hari.
-72. Tarif kamar dihitung per penggal okupansi menurut kelas bed yang ditempati saat itu.
+72. Tarif kamar dihitung per penggal okupansi menurut kelas bed yang ditempati saat itu, dan jumlah seluruh penggal sama dengan lama rawatnya.
 73. Tagihan rawat inap memuat biaya kamar bersama seluruh tindakan, obat, lab, dan radiologi selama dirawat.
 74. Kunjungan yang sedang dirawat inap tidak bisa diselesaikan lewat alur rawat jalan; penutupnya adalah pemulangan.
 75. Rincian biaya sementara bisa dilihat kapan saja selama pasien dirawat, tanpa membuat tagihan.
+76. Obat untuk pasien rawat inap diserahkan tanpa menunggu pelunasan; biayanya dipungut saat tagihan disusun di pemulangan.
+77. Rincian sementara dan tagihan akhir dihitung dari sumber yang sama, sehingga keduanya tidak bisa berselisih.
 
 ## 9. Penanganan kesalahan
 
@@ -154,6 +163,25 @@ Melanjutkan penomoran spec Fase 4. Setiap aturan wajib punya test yang membuktik
 - **Memulangkan tanpa diagnosa akhir atau cara pulang** ditolak sebelum apa pun tersimpan.
 - **Menutup kunjungan rawat inap lewat layar poli** ditolak dengan pesan yang mengarahkan ke pemulangan.
 - **Tarif kamar untuk suatu kelas belum diisi** memakai tarif penjamin `UMUM` dan mencatat peringatan, sama seperti layanan lain.
+
+### Dua cacat yang ditemukan saat pengerjaan
+
+Model "tagihan disusun saat pulang" ternyata mematahkan alur apotek yang sudah
+berjalan, dan keduanya baru terlihat setelah kodenya ditulis:
+
+- **`PenyiapanResep::siapkan()` menolak pasien rawat inap.** Ia memanggil
+  `PenyusunTagihan::tambahObat()`, yang melempar galat bila tagihannya belum ada
+  — dan tagihan rawat inap memang belum ada sampai pasien pulang. Akibatnya
+  apotek tidak bisa melayani pasien rawat inap sama sekali.
+- **Aturan 30 menahan obat pasien rawat inap selamanya.** Aturan itu menahan obat
+  sampai tagihan lunas, yang benar untuk pasien yang akan berjalan keluar pintu,
+  tetapi mustahil dipenuhi pasien yang tagihannya baru terbit saat ia pulang.
+
+Keduanya diperbaiki dengan pengecualian yang tegas, bukan dengan melonggarkan
+aturannya untuk semua orang: `tambahObat()` mengembalikan `null` bila
+kunjungannya sedang rawat inap, dan aturan 30 tidak berlaku selama pasien masih
+dirawat. Biaya obatnya tidak hilang — `susun()` memungutnya dari resep yang sudah
+diserahkan (aturan 76).
 
 ## 10. Pengujian
 

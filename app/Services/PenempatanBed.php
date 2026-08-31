@@ -65,12 +65,13 @@ class PenempatanBed
 
         return KonteksAudit::dengan(trim($alasan), function () use ($rawatInap, $tujuan, $petugas, $berjalan) {
             return DB::transaction(function () use ($rawatInap, $tujuan, $petugas, $berjalan) {
-                // Hari peralihan menjadi milik penggal yang ditinggalkan: kamar
-                // lama sudah terpakai hari itu, kamar baru baru terpakai
-                // keesokan harinya.
+                // Penggal adalah selang setengah terbuka [mulai, selesai):
+                // hari peralihan menjadi milik penggal yang baru, karena kamar
+                // itulah yang ditempati pada malam hari itu. Dengan cara ini
+                // jumlah hari seluruh penggal persis sama dengan lama rawatnya.
                 $this->tutupPenggal($berjalan, Carbon::today());
 
-                return $this->bukaPenggal($rawatInap, $tujuan, $petugas, Carbon::today()->addDay());
+                return $this->bukaPenggal($rawatInap, $tujuan, $petugas, Carbon::today());
             });
         });
     }

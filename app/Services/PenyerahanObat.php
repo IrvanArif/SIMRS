@@ -23,7 +23,9 @@ class PenyerahanObat
 
         // Aturan 30: pasien tunai menunggu lunas; pasien berpenjamin tidak.
         // Aturan 29 mencegah uang lolos, aturan ini mencegah obat lolos.
-        if (! $kunjungan->penjamin->ditanggung()) {
+        // Kecuali pasien rawat inap: ia tidak bisa membayar lebih dulu karena
+        // tagihannya baru ada saat pulang, dan obatnya diberikan selama dirawat.
+        if (! $kunjungan->penjamin->ditanggung() && ! $kunjungan->sedangDirawatInap()) {
             $tagihan = $kunjungan->tagihan;
 
             if ($tagihan === null || $tagihan->status !== StatusTagihan::Lunas) {

@@ -48,14 +48,17 @@ class OkupansiBed extends Model
      * Lama penggal dalam hari kalender, minimal satu (aturan 71): kamar yang
      * dipakai setengah hari tetap tidak bisa dijual ke orang lain hari itu.
      *
+     * `selesai` bersifat eksklusif — penggal adalah selang [mulai, selesai) —
+     * sehingga jumlah hari seluruh penggal persis sama dengan lama rawatnya.
+     *
      * Penggal yang belum ditutup dihitung sampai hari ini, supaya rincian
-     * sementara bisa dibaca kapan saja.
+     * sementara bisa dibaca kapan saja selama pasien masih dirawat.
      */
     public function hari(?Carbon $sampai = null): int
     {
         $akhir = $this->selesai ?? $sampai ?? Carbon::today();
 
-        return max(1, $this->mulai->diffInDays($akhir));
+        return max(1, (int) $this->mulai->diffInDays($akhir));
     }
 
     public function subtotal(?Carbon $sampai = null): int
