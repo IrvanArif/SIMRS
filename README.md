@@ -1,11 +1,10 @@
 # SIMRS — Sistem Informasi Manajemen Rumah Sakit
 
 Aplikasi Laravel untuk RS Sampel. Dikembangkan bertahap;
-**Fase 1 (Fondasi + Rawat Jalan)**, **Fase 2 (Farmasi)**, **Fase 3 (Laboratorium)**,
-**Fase 4 (Radiologi)**, dan **Fase 5 (Rawat Inap)** sudah selesai, mencakup satu
-alur utuh dari pasien mendaftar, diperiksa, menunggu hasil laboratorium dan
-pencitraan, menginap bila perlu, menerima obat, sampai tagihannya diselesaikan
-kasir.
+**Fase 1 (Fondasi + Rawat Jalan)** sampai **Fase 6 (Klaim dan Pelaporan)** sudah
+selesai, mencakup satu alur utuh dari pasien mendaftar, diperiksa, menunggu hasil
+laboratorium dan pencitraan, menginap bila perlu, menerima obat, sampai tagihannya
+diselesaikan kasir — lalu diklaimkan ke penjamin dan dilaporkan ke manajemen.
 
 Tahap ini memakai **data dummy**. Belum ada migrasi data pasien nyata dan belum ada
 integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase berikutnya.
@@ -22,6 +21,8 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 - Rencana Fase 4: [`docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md`](docs/superpowers/plans/2026-08-18-simrs-fase4-radiologi.md)
 - Spesifikasi Fase 5 (Rawat Inap): [`docs/superpowers/specs/2026-08-18-simrs-fase5-rawat-inap-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase5-rawat-inap-design.md)
 - Rencana Fase 5: [`docs/superpowers/plans/2026-08-18-simrs-fase5-rawat-inap.md`](docs/superpowers/plans/2026-08-18-simrs-fase5-rawat-inap.md)
+- Spesifikasi Fase 6 (Klaim dan Pelaporan): [`docs/superpowers/specs/2026-08-18-simrs-fase6-klaim-pelaporan-design.md`](docs/superpowers/specs/2026-08-18-simrs-fase6-klaim-pelaporan-design.md)
+- Rencana Fase 6: [`docs/superpowers/plans/2026-08-18-simrs-fase6-klaim-pelaporan.md`](docs/superpowers/plans/2026-08-18-simrs-fase6-klaim-pelaporan.md)
 - Akun pengguna dan layar per peran: [`docs/akun-pengguna.md`](docs/akun-pengguna.md)
 
 ## Cakupan Fase 1
@@ -39,11 +40,13 @@ integrasi ke sistem eksternal (BPJS VClaim, SATUSEHAT) — keduanya masuk fase b
 | Laboratorium | Master pemeriksaan berparameter dan nilai rujukan per jenis kelamin, order dokter, pengambilan sampel, entri hasil berpenanda otomatis, validasi sebelum terbaca dokter |
 | Radiologi | Master pemeriksaan lima modalitas beserta instruksi persiapan, order berindikasi klinis wajib, pelaksanaan pencitraan bernomor film oleh radiografer, ekspertise naratif oleh dokter |
 | Rawat inap | Master ruang, kelas, dan bed; perintah rawat inap berindikasi wajib; papan bed; penempatan dan pemindahan berpenggal; catatan perkembangan terintegrasi; pemulangan berdiagnosa akhir; biaya kamar per penggal |
+| Klaim | SEP di balik antarmuka yang bisa diganti, master ICD-9-CM, penyusunan berkas klaim berpemeriksaan kelengkapan, pengajuan dan verifikasi, ekspor CSV |
+| Pelaporan | Indikator BOR/LOS/TOI/BTO, sepuluh besar penyakit, pendapatan per penjamin, rekap kunjungan per poli |
 | Navigasi | Menu per peran disusun dari satu daftar, dengan test yang membuktikan tiap tautan benar-benar bisa dibuka pemiliknya |
 | Display antrian | Halaman publik tanpa login untuk layar ruang tunggu |
 
-Fase berikutnya: klaim & pelaporan (BPJS, INA-CBG, SATUSEHAT) → inventori, SDM,
-akuntansi.
+Fase berikutnya: inventori non-obat, SDM, dan akuntansi. Integrasi sungguhan ke
+BPJS VClaim dan SATUSEHAT menunggu kredensial — batas antarmukanya sudah siap.
 
 ## Alur laboratorium
 
@@ -64,6 +67,65 @@ Rujukan dibedakan menurut jenis kelamin karena rentang normalnya memang
 berbeda: hemoglobin 16 g/dL normal bagi laki-laki tetapi tinggi bagi
 perempuan. Parameter tanpa rujukan yang cocok tidak ditebak — nilainya
 tersimpan tanpa penanda dan kejadiannya dicatat agar masternya dilengkapi.
+
+## Klaim dan pelaporan
+
+**Tiga batasan diambil di muka, dan ketiganya disengaja.**
+
+**Pengelompokan INA-CBG tidak ditiru.** Ia dikerjakan *grouper* resmi Kemenkes —
+perangkat lunak berlisensi dengan bobot yang diperbarui berkala. Menirunya di
+sini akan menghasilkan angka rupiah yang salah dan terlihat meyakinkan, yang jauh
+lebih berbahaya daripada tidak ada angka. Yang dikerjakan SIMRS adalah menyusun
+berkas klaim yang lengkap lalu mengekspornya; pengelompokannya terjadi di grouper.
+
+**Integrasi BPJS VClaim berhenti di batas antarmuka.** Ia menuntut kredensial
+terdaftar yang hanya bisa diuji dengan kredensial itu; menulis klien HTTP yang
+tak pernah bisa dijalankan lalu menyebutnya selesai adalah kebohongan yang rapi.
+Penerbitan SEP disembunyikan di balik antarmuka `PenerbitSep`, dengan satu
+penerapan yang benar-benar berjalan — `SepLokal`. Tiap SEP menyimpan penerbitnya
+(`lokal`) supaya nomor hasil simulasi tidak pernah tertukar dengan nomor sungguhan.
+Apa yang harus dikerjakan penerapan VClaim dirinci di spec Fase 6 bagian 7, dan
+satu test mengikat janjinya: ia mengikat ulang antarmukanya ke penerapan ganda
+dan membuktikan seluruh alur tetap bekerja tanpa satu baris pun berubah.
+
+**Kode prosedur ICD-9-CM ditambahkan** karena klaim mustahil tanpanya. Tindakan
+yang tidak punya padanan — konsultasi dan administrasi memang tidak punya — tidak
+menggagalkan klaim, tetapi dicatat sebagai peringatan pada berkasnya.
+
+```
+Admisi terbitkan SEP     di awal kunjungan; tanpa itu pelayanan tidak terjamin
+Pelayanan berjalan       seperti biasa
+Kunjungan/masa rawat selesai
+Rekam medis susun klaim  kelengkapannya diperiksa saat penyusunan
+Ajukan                   yang sudah diajukan tidak bisa disunting
+Catat hasil verifikasi   disetujui, atau ditolak dengan catatan
+Ekspor CSV               diunggah ke aplikasi BPJS di luar sistem ini
+```
+
+Kelengkapan diperiksa **saat penyusunan**, dan seluruh kekurangan dilaporkan
+sekaligus — penolakan yang menyebut satu kekurangan lalu kekurangan berikutnya
+memaksa petugas bolak-balik, dan berkas yang ditolak verifikator berminggu-minggu
+kemudian jauh lebih mahal.
+
+**Empat laporan**, seluruhnya dari data yang sudah ada:
+
+| Indikator | Arti |
+|---|---|
+| BOR | seberapa penuh bangsalnya |
+| LOS | rata-rata lama dirawat |
+| TOI | rata-rata bed menganggur |
+| BTO | berapa kali satu bed berganti pasien |
+
+Keempatnya bisa dihitung tepat karena okupansi disimpan berpenggal: hari rawat
+diambil dari irisan tiap penggal dengan periodenya. Pasien yang masuk sebelum
+periode dan pulang sesudahnya hanya menyumbang hari di dalam periode — tanpa
+pemotongan itu, BOR bisa melampaui 100%. Bed nonaktif tidak dihitung sebagai
+kapasitas: bed rusak bukan kapasitas.
+
+Laporan pendapatan memisahkan yang lunas, yang menunggu kasir, dan yang
+ditanggung penjamin. Pemisahan itu bukan kerapian: menjumlahkan seluruh tagihan
+sebagai pendapatan membuat manajemen mengira punya uang yang sebenarnya masih
+piutang klaim.
 
 ## Alur rawat inap
 
@@ -249,6 +311,8 @@ Aturan yang punya konsekuensi tinggal di `app/Services`:
 - `PemesananLab`, `PemeriksaanLaboratorium`, `PenandaNilai` — order lab, alur sampel sampai validasi, penandaan nilai abnormal.
 - `PemesananRadiologi`, `PelaksanaanRadiologi`, `PenulisanEkspertise` — order radiologi, pelaksanaan pencitraan, penulisan dan koreksi ekspertise.
 - `PerintahRawatInap`, `PenempatanBed`, `CatatanHarian`, `PemulanganPasien`, `PenghitungBiayaKamar` — perintah rawat inap, okupansi bed berpenggal, catatan perkembangan, pemulangan, dan biaya kamar.
+- `PenerbitanSep`, `PenyusunBerkasKlaim`, `EksporKlaim` — SEP, berkas klaim, dan ekspornya. `App\Kontrak\PenerbitSep` adalah batas ke penerbit luar; `SepLokal` penerapan bawaannya.
+- `IndikatorRawatInap`, `LaporanMorbiditas`, `LaporanPendapatan`, `LaporanKunjungan`, `RentangTanggal` — keempat laporan beserta penjagaan rentang tanggalnya.
 
 Sejak Fase 3, seluruh harga tinggal di satu tabel `tarif` berkolom jenis layanan,
 dan `tagihan_detail` menyimpan sumbernya secara polimorfik. Dengan begitu rincian

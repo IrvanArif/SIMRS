@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BerkasKlaim;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -52,7 +53,11 @@ class EksporKlaim
      */
     public function csv(Collection $berkas): string
     {
-        $berkas->loadMissing('sep', 'diagnosa', 'prosedur');
+        // Dimuat sekaligus bila kumpulannya berasal dari Eloquent; kumpulan
+        // biasa (mis. dari test) dibiarkan apa adanya.
+        if ($berkas instanceof EloquentCollection) {
+            $berkas->loadMissing('sep', 'diagnosa', 'prosedur');
+        }
 
         // fputcsv dipakai, bukan implode: ia yang tahu cara mengutip nama yang
         // memuat koma atau tanda kutip. Menyusunnya sendiri adalah cara klasik

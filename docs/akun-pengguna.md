@@ -48,6 +48,7 @@ memegang poli rawat jalan, dan yang menentukan kewenangannya adalah perannya.
 | Cetak karcis | `/cetak/karcis/{id_antrian}` |
 | Papan bed rawat inap | `/rawat-inap/papan` |
 | Tempatkan pasien di bed | `/rawat-inap/tempatkan/{id_rawat_inap}` |
+| Terbitkan SEP | `/klaim/sep` |
 
 ### Perawat — `perawat@rs.test`
 
@@ -117,9 +118,13 @@ pencitraan adalah tindakan medis, bukan tugas petugas yang mengoperasikan alat.
 | Proses pembayaran | `/kasir/bayar/{id_tagihan}` |
 | Cetak kuitansi | `/cetak/kuitansi/{id_pembayaran}` |
 | Papan bed rawat inap | `/rawat-inap/papan` |
+| SEP | `/klaim/sep` |
+| Berkas klaim | `/klaim/berkas` |
+| Pendapatan per penjamin | `/laporan/pendapatan` |
 
-Kasir bisa membuka papan bed karena ia harus bisa menjelaskan rincian kamar pada
-tagihan, tanpa berwenang mengubah apa pun di sana.
+Kasir bisa membuka papan bed dan berkas klaim karena ia harus bisa menjelaskan
+rincian kamar dan status klaim pada tagihan, tanpa berwenang mengubah apa pun
+di sana.
 
 ### Rekam medis — `rekammedis@rs.test`
 
@@ -129,6 +134,16 @@ tagihan, tanpa berwenang mengubah apa pun di sana.
 | Koreksi data pasien | `/rekam-medis/koreksi/{id_pasien}` |
 | Rekap kunjungan harian | `/rekam-medis/rekap` |
 | Papan bed rawat inap | `/rawat-inap/papan` |
+| SEP | `/klaim/sep` |
+| Berkas klaim | `/klaim/berkas` |
+| Unduh ekspor klaim | `/klaim/ekspor` |
+| Indikator rawat inap | `/laporan/indikator` |
+| Sepuluh besar penyakit | `/laporan/morbiditas` |
+| Rekap kunjungan | `/laporan/kunjungan` |
+| Pendapatan per penjamin | `/laporan/pendapatan` |
+
+Rekam medis yang menyusun klaim, bukan kasir: klaim disusun dari kode diagnosa
+dan prosedur, dan pengkodean adalah pekerjaan rekam medis.
 
 ### Admin — `admin@rs.test`
 
@@ -140,6 +155,9 @@ tagihan, tanpa berwenang mengubah apa pun di sana.
 | Master tarif | `/master/tarif` |
 | Master pemeriksaan radiologi | `/master/pemeriksaan-radiologi` |
 | Master ruang dan bed | `/master/ruang-bed` |
+| SEP | `/klaim/sep` |
+| Berkas klaim | `/klaim/berkas` |
+| Seluruh laporan | `/laporan/indikator`, `/laporan/morbiditas`, `/laporan/kunjungan`, `/laporan/pendapatan` |
 | Kelola pengguna | `/admin/user` |
 | Audit log | `/admin/audit` |
 

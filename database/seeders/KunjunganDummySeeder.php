@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\CaraPulang;
 use App\Enums\JenisDiagnosa;
 use App\Enums\MetodePembayaran;
+use App\Enums\StatusBerkasKlaim;
 use App\Enums\StatusKunjungan;
 use App\Enums\Peran;
 use App\Models\Dokter;
@@ -28,6 +29,8 @@ use App\Services\PemesananRadiologi;
 use App\Services\PendaftaranKunjungan;
 use App\Services\PemulanganPasien;
 use App\Services\PenempatanBed;
+use App\Services\PenerbitanSep;
+use App\Services\PenyusunBerkasKlaim;
 use App\Services\PerintahRawatInap;
 use App\Services\PenulisanEkspertise;
 use App\Services\PenulisanResep;
@@ -294,6 +297,12 @@ class KunjunganDummySeeder extends Seeder
             $dokter, $penjamin, $konsultasi, $icd, $admisi, $perawat, $dokterUser
         );
 
+        // Dijalankan paling akhir supaya kunjungan rawat inap pun ikut ber-SEP.
+        // Kalau dipanggil lebih dulu, masa rawatnya belum ada sehingga seluruh
+        // SEP tercatat sebagai rawat jalan dan tidak satu pun klaim rawat inap
+        // tersusun — persis keadaan yang membuat kasus paling menarik tak terlihat.
+        [$jumlahSep, $jumlahKlaim] = $this->isiKlaim();
+
         $menungguApotek = \App\Models\Resep::where('status', \App\Enums\StatusResep::Dibuat)->count();
         $belumLunas = \App\Models\Tagihan::where('status', \App\Enums\StatusTagihan::BelumBayar)->count();
 
@@ -302,7 +311,8 @@ class KunjunganDummySeeder extends Seeder
             ."{$disiapkan} resep disiapkan, {$diserahkan} obat diserahkan, {$dibayar} dibayar, "
             ."{$menungguApotek} resep menunggu apotek, {$belumLunas} tagihan menunggu kasir, "
             ."{$antreLab} order lab dan {$antreRadiologi} order radiologi masih mengantre, "
-            ."{$dirawat} pasien sedang dirawat inap dan {$sudahPulang} sudah pulang."
+            ."{$dirawat} pasien sedang dirawat inap dan {$sudahPulang} sudah pulang, "
+            ."{$jumlahSep} SEP terbit dan {$jumlahKlaim} berkas klaim tersusun."
         );
     }
 
@@ -442,5 +452,83 @@ class KunjunganDummySeeder extends Seeder
         }
 
         return [$dirawat, $pulang];
+    }
+
+    /**
+     * Menerbitkan SEP untuk seluruh kunjungan berpenjamin, lalu menyusun berkas
+     * klaim untuk yang sudah selesai. Keempat status berkas dibuat ada isinya
+     * supaya seluruh keadaan terlihat saat sistem didemokan.
+     *
+     * Di sistem yang berjalan, SEP terbit di awal kunjungan. Di sini ia disusulkan
+     * di akhir seed semata supaya masa rawat inapnya sudah ada saat jenis
+     * pelayanannya ditentukan.
+     *
+     * @return array{0: int, 1: int} jumlah SEP dan jumlah berkas klaim
+     */
+    private function isiKlaim(): array
+    {
+        $admisi = User::role(Peran::Admisi->value)->first();
+        $rekamMedis = User::role(Peran::RekamMedis->value)->first();
+
+        if ($admisi === null || $rekamMedis === null) {
+            return [0, 0];
+        }
+
+        $penerbitan = app(PenerbitanSep::class);
+        $penyusun = app(PenyusunBerkasKlaim::class);
+
+        $berpenjamin = Kunjungan::whereHas('penjamin', fn ($q) => $q->where('jenis', 'penjamin'))
+            ->whereNotNull('no_kartu_penjamin')
+            ->whereDoesntHave('sep', fn ($q) => $q->berlaku())
+            ->with('diagnosa.icd10')
+            ->orderBy('id')
+            ->get();
+
+        $jumlahSep = 0;
+
+        foreach ($berpenjamin as $kunjungan) {
+            $diagnosaAwal = $kunjungan->diagnosa->first()?->icd10->nama_id
+                ?? 'Keluhan sesuai anamnesis awal';
+
+            $penerbitan->terbitkan($kunjungan, $admisi, $diagnosaAwal);
+            $jumlahSep++;
+        }
+
+        $siapKlaim = Kunjungan::whereHas('penjamin', fn ($q) => $q->where('jenis', 'penjamin'))
+            ->where('status', StatusKunjungan::Selesai->value)
+            ->whereHas('sep', fn ($q) => $q->berlaku())
+            ->whereHas('tagihan')
+            ->whereHas('diagnosa', fn ($q) => $q->where('jenis', JenisDiagnosa::Primer->value))
+            ->whereDoesntHave('berkasKlaim', fn ($q) => $q->berlaku())
+            ->orderBy('id')
+            ->get();
+
+        $jumlahKlaim = 0;
+
+        foreach ($siapKlaim as $urutan => $kunjungan) {
+            $berkas = $penyusun->susun($kunjungan, $rekamMedis);
+            $jumlahKlaim++;
+
+            // Yang pertama dibiarkan draf; sisanya diajukan, lalu satu disetujui
+            // dan satu ditolak.
+            if ($urutan === 0) {
+                continue;
+            }
+
+            $penyusun->ajukan($berkas, $rekamMedis);
+
+            if ($urutan === 1) {
+                $penyusun->tandaiHasil($berkas->refresh(), StatusBerkasKlaim::Disetujui, $rekamMedis, null);
+            }
+
+            if ($urutan === 2) {
+                $penyusun->tandaiHasil(
+                    $berkas->refresh(), StatusBerkasKlaim::Ditolak, $rekamMedis,
+                    'Kode prosedur tidak sesuai diagnosa; mohon dikoreksi.'
+                );
+            }
+        }
+
+        return [$jumlahSep, $jumlahKlaim];
     }
 }
