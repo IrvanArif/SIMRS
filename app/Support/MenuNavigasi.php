@@ -73,6 +73,22 @@ class MenuNavigasi
             ],
         ],
         [
+            'judul' => 'Klaim',
+            'tautan' => [
+                ['rute' => 'klaim.sep', 'label' => 'SEP', 'peran' => ['admisi', 'rekam_medis', 'kasir', 'admin']],
+                ['rute' => 'klaim.berkas', 'label' => 'Berkas Klaim', 'peran' => ['rekam_medis', 'kasir', 'admin']],
+            ],
+        ],
+        [
+            'judul' => 'Laporan',
+            'tautan' => [
+                ['rute' => 'laporan.indikator', 'label' => 'Indikator Rawat Inap', 'peran' => ['rekam_medis', 'admin']],
+                ['rute' => 'laporan.morbiditas', 'label' => 'Sepuluh Besar Penyakit', 'peran' => ['rekam_medis', 'admin']],
+                ['rute' => 'laporan.kunjungan', 'label' => 'Rekap Kunjungan', 'peran' => ['rekam_medis', 'admin']],
+                ['rute' => 'laporan.pendapatan', 'label' => 'Pendapatan', 'peran' => ['kasir', 'rekam_medis', 'admin']],
+            ],
+        ],
+        [
             'judul' => 'Master Data',
             'tautan' => [
                 ['rute' => 'master.poli', 'label' => 'Poli', 'peran' => ['admin']],

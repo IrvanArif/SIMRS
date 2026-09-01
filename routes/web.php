@@ -10,6 +10,12 @@ use App\Livewire\Apotek\PenerimaanBatch;
 use App\Livewire\Apotek\PeringatanStok;
 use App\Livewire\Admin\PenampilAuditLog;
 use App\Livewire\Kasir\DaftarTagihan;
+use App\Livewire\Klaim\DaftarBerkas;
+use App\Livewire\Klaim\DaftarSep;
+use App\Livewire\Laporan\Indikator;
+use App\Livewire\Laporan\Morbiditas;
+use App\Livewire\Laporan\Pendapatan as LaporanPendapatan;
+use App\Livewire\Laporan\RekapKunjungan;
 use App\Livewire\Kasir\ProsesPembayaran;
 use App\Livewire\Pendaftaran\CariPasien;
 use App\Livewire\Pendaftaran\FormKunjungan;
@@ -40,7 +46,9 @@ use App\Livewire\RekamMedis\KoreksiPasien;
 use App\Livewire\RekamMedis\PenelusuranRekamMedis;
 use App\Livewire\RekamMedis\RekapKunjunganHarian;
 use App\Models\Antrian;
+use App\Models\BerkasKlaim;
 use App\Models\Pembayaran;
+use App\Services\EksporKlaim;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -145,6 +153,40 @@ Route::middleware('auth')->group(function () {
     // Memulangkan berarti menetapkan diagnosa akhir dan cara pulang (aturan 68).
     Route::middleware('role:dokter')->group(function () {
         Route::get('/rawat-inap/pulangkan/{rawatInap}', LayarPemulangan::class)->name('rawat-inap.pulangkan');
+    });
+
+    Route::middleware('role:admisi|rekam_medis|kasir|admin')->group(function () {
+        Route::get('/klaim/sep', DaftarSep::class)->name('klaim.sep');
+    });
+
+    Route::middleware('role:rekam_medis|kasir|admin')->group(function () {
+        Route::get('/klaim/berkas', DaftarBerkas::class)->name('klaim.berkas');
+    });
+
+    // Ekspor menghasilkan berkas; siapa yang mengunggahnya ke aplikasi BPJS
+    // adalah urusan proses kerja, bukan sistem ini.
+    Route::middleware('role:rekam_medis|admin')->group(function () {
+        Route::get('/klaim/ekspor', function (EksporKlaim $ekspor) {
+            $berkas = BerkasKlaim::terkirim()->with('sep', 'diagnosa', 'prosedur')->get();
+            $isi = $ekspor->csv($berkas);
+
+            return response()->streamDownload(
+                fn () => print($isi),
+                'klaim-'.now()->format('Ymd-His').'.csv',
+                ['Content-Type' => 'text/csv']
+            );
+        })->name('klaim.ekspor');
+    });
+
+    Route::middleware('role:rekam_medis|admin')->group(function () {
+        Route::get('/laporan/indikator', Indikator::class)->name('laporan.indikator');
+        Route::get('/laporan/morbiditas', Morbiditas::class)->name('laporan.morbiditas');
+        Route::get('/laporan/kunjungan', RekapKunjungan::class)->name('laporan.kunjungan');
+    });
+
+    // Kasir ikut boleh melihat pendapatan: ia yang menerima uangnya.
+    Route::middleware('role:kasir|rekam_medis|admin')->group(function () {
+        Route::get('/laporan/pendapatan', LaporanPendapatan::class)->name('laporan.pendapatan');
     });
 
     Route::middleware('role:admin')->group(function () {
